@@ -128,8 +128,8 @@ export function searchStyles() {
     .name-cell a:hover { color: var(--primary); text-decoration: underline; }
     .name-cell small { display: block; color: var(--gray-500); font-size: 12px; margin-top: var(--sp-1); }
     .status { display: inline-flex; align-items: center; width: max-content; padding: 0 var(--sp-2); line-height: 20px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-    .status.document-active, .status.account-approved, .status.campaign-completed, .status.import-completed, .status.snapshot-completed, .status.change-created { background: var(--success-soft); color: var(--success); }
-    .status.document-disposed, .status.account-disabled, .status.account-rejected, .status.campaign-cancelled, .status.import-cancelled, .status.snapshot-cancelled, .status.change-neutral { background: var(--gray-100); color: var(--gray-700); }
+    .status.document-active, .status.master-active, .status.account-approved, .status.campaign-completed, .status.import-completed, .status.snapshot-completed, .status.change-created { background: var(--success-soft); color: var(--success); }
+    .status.document-disposed, .status.master-inactive, .status.account-disabled, .status.account-rejected, .status.campaign-cancelled, .status.import-cancelled, .status.snapshot-cancelled, .status.change-neutral { background: var(--gray-100); color: var(--gray-700); }
     .status.account-pending, .status.ledger-excluded, .status.review-pending, .status.campaign-pending, .status.import-pending, .status.snapshot-pending, .status.change-updated { background: var(--warning-soft); color: var(--warning); }
     .status.ledger-current, .status.policy-required { background: var(--primary-soft); color: var(--primary); }
     .status.account-review, .status.import-failed, .status.snapshot-failed, .status.campaign-failed { background: var(--danger-soft); color: var(--danger); }

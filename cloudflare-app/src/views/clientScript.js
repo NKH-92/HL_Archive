@@ -5,6 +5,7 @@ import { bootstrapScript } from "./clientScript/bootstrap.js";
 import { bulkCommandScript } from "./clientScript/bulkCommands.js";
 import { documentDetailScript } from "./clientScript/documentDetail.js";
 import { instantSearchScript } from "./clientScript/instantSearch.js";
+import { masterManagementScript } from "./clientScript/masterManagement.js";
 import { navigationFeedbackScript } from "./clientScript/navigationFeedback.js";
 import { suggestionScript } from "./clientScript/suggestions.js";
 import { workspaceInteractionScript } from "./clientScript/workspaceInteractions.js";
@@ -24,6 +25,7 @@ export function clientScript() {
     bulkCommandScript(),
     documentDetailScript(),
     navigationFeedbackScript(),
+    masterManagementScript(),
     instantSearchScript(),
     workspaceInteractionScript(),
     "    });",

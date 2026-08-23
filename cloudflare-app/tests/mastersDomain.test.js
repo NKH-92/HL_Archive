@@ -35,6 +35,29 @@ test("masters 수정·사용중지 폼은 동일한 expectedRowVersion을 제출
   assert.equal((html.match(/name="expectedRowVersion" value="7"/g) || []).length, 2);
 });
 
+test("대분류 관리는 정렬 숫자 대신 필요한 기능과 확장 가능한 목록을 제공한다", async () => {
+  const response = masters.categoriesPage({
+    session: { username: "admin", displayName: "관리자", role: "Admin", csrfToken: "csrf-token-123" },
+    categories: [
+      { id: 3, name: "제조", description: "제조 문서", sort_order: 30, is_active: 1, row_version: 7 },
+      { id: 4, name: "품질", description: "품질 문서", sort_order: 10, is_active: 0, row_version: 8 }
+    ]
+  });
+  const html = await response.text();
+
+  assert.match(html, /class="page-head master-page-head"/);
+  assert.match(html, /<strong>필요한 기능<\/strong>/);
+  assert.match(html, /찾기 · 추가 · 이름과 설명 수정 · 사용중지와 다시 사용/);
+  assert.match(html, /data-master-search/);
+  assert.match(html, /data-master-inactive-toggle/);
+  assert.match(html, /data-master-row data-master-active="true"/);
+  assert.match(html, /data-master-row data-master-active="false"/);
+  assert.match(html, /type="hidden" name="sortOrder" value="30"/);
+  assert.doesNotMatch(html, /정렬 순서|type="number"/);
+  assert.match(html, /사용중지하면 새 문서 등록 화면에서만 숨겨지며 기존 문서에는 그대로 남습니다/);
+  assert.match(html, /다시 사용하면 새 문서 등록과 대분류 선택 목록에 표시됩니다/);
+});
+
 test("masters의 SQL은 infrastructure에만 존재한다", async () => {
   const nonInfrastructure = [
     "../src/domains/masters/domain/policy.js",
