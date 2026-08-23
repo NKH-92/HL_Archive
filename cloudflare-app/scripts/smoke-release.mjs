@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
@@ -7,6 +8,10 @@ const HEALTH_ATTEMPTS = 15;
 const HEALTH_RETRY_MS = 1_000;
 const MAX_HEALTH_ATTEMPTS = 120;
 const MAX_HEALTH_RETRY_MS = 5_000;
+const ASSET_ATTEMPTS = 15;
+const ASSET_RETRY_MS = 1_000;
+const MAX_ASSET_ATTEMPTS = 60;
+const MAX_ASSET_RETRY_MS = 5_000;
 export const ADMIN_SMOKE_PATH = urlFor("admin.settings");
 const ADMIN_SETTINGS_MARKERS = Object.freeze([
   "<h1>사용자 관리</h1>",
@@ -101,6 +106,8 @@ export async function runReleaseSmoke({
   publicOnly = false,
   healthAttempts = HEALTH_ATTEMPTS,
   healthRetryMs = HEALTH_RETRY_MS,
+  assetAttempts = ASSET_ATTEMPTS,
+  assetRetryMs = ASSET_RETRY_MS,
   allowedHosts,
   fetchImpl = fetch,
   waitImpl = wait
@@ -116,7 +123,7 @@ export async function runReleaseSmoke({
 
   const origin = target.origin;
   const smokeFetch = fetchImpl;
-  const retryPolicy = resolveRetryPolicy({ healthAttempts, healthRetryMs });
+  const retryPolicy = resolveRetryPolicy({ healthAttempts, healthRetryMs, assetAttempts, assetRetryMs });
   let health;
   let healthBody = null;
   let readiness = null;
@@ -176,7 +183,13 @@ export async function runReleaseSmoke({
 
   let publicSurface = null;
   if (verifyPublicSurface) {
-    publicSurface = await verifyReleasePublicSurface({ target, fetchImpl: smokeFetch });
+    publicSurface = await verifyReleasePublicSurface({
+      target,
+      fetchImpl: smokeFetch,
+      waitImpl,
+      assetAttempts: retryPolicy.assetAttempts,
+      assetRetryMs: retryPolicy.assetRetryMs
+    });
   }
 
   const login = await smokeFetch(`${origin}/login`, { redirect: "manual" });
@@ -235,7 +248,14 @@ export async function runReleaseSmoke({
   return Object.freeze(summary);
 }
 
-export async function verifyReleasePublicSurface({ target, fetchImpl = fetch }) {
+export async function verifyReleasePublicSurface({
+  target,
+  fetchImpl = fetch,
+  waitImpl = wait,
+  assetAttempts = ASSET_ATTEMPTS,
+  assetRetryMs = ASSET_RETRY_MS,
+  readExpectedAsset = readPublicAsset
+}) {
   const insecure = new URL(`${target.origin}/login`);
   insecure.protocol = "http:";
   const redirectResponse = await fetchImpl(insecure.toString(), { redirect: "manual" });
@@ -244,39 +264,101 @@ export async function verifyReleasePublicSurface({ target, fetchImpl = fetch }) 
   }
 
   const assets = {};
+  const retryPolicy = resolveAssetRetryPolicy({ assetAttempts, assetRetryMs });
   for (const contract of PUBLIC_ASSET_CONTRACTS) {
-    const response = await fetchImpl(`${target.origin}${contract.path}`, { redirect: "manual" });
-    const contentType = String(response.headers.get("Content-Type") || "").toLowerCase();
-    if (response.status !== 200 || !contentType.startsWith(contract.contentType)) {
-      throw new Error(`정적 asset smoke 실패(path=${contract.path}, status=${response.status}, content-type=${contentType || "none"})`);
-    }
-    for (const [header, expected] of Object.entries(PUBLIC_ASSET_SECURITY_HEADERS)) {
-      if (response.headers.get(header) !== expected) {
-        throw new Error(`정적 asset 보안 header smoke 실패(path=${contract.path}, header=${header})`);
-      }
-    }
-    const etag = response.headers.get("ETag");
-    if (!etag) {
-      throw new Error(`정적 asset ETag smoke 실패(path=${contract.path})`);
-    }
-    const revalidated = await fetchImpl(`${target.origin}${contract.path}`, {
-      headers: { "If-None-Match": etag },
-      redirect: "manual"
+    const expectedBytes = toBytes(await readExpectedAsset(contract.path));
+    await verifyPublicAsset({
+      target,
+      contract,
+      expectedBytes,
+      fetchImpl,
+      waitImpl,
+      ...retryPolicy
     });
-    const revalidatedType = String(revalidated.headers.get("Content-Type") || "").toLowerCase();
-    const stableFullResponse = revalidated.status === 200
-      && revalidated.headers.get("ETag") === etag
-      && revalidatedType.startsWith(contract.contentType);
-    if (revalidated.status !== 304 && !stableFullResponse) {
-      throw new Error(`정적 asset 재검증 smoke 실패(path=${contract.path}, status=${revalidated.status})`);
-    }
-    assets[contract.path] = response.status;
+    assets[contract.path] = 200;
   }
 
   return Object.freeze({
     httpRedirect: redirectResponse.status,
     assets: Object.freeze(assets)
   });
+}
+
+async function verifyPublicAsset({
+  target,
+  contract,
+  expectedBytes,
+  fetchImpl,
+  waitImpl,
+  assetAttempts,
+  assetRetryMs
+}) {
+  let lastError = new Error(`정적 asset smoke 실패(path=${contract.path})`);
+  for (let attempt = 1; attempt <= assetAttempts; attempt += 1) {
+    const response = await fetchImpl(`${target.origin}${contract.path}`, { redirect: "manual" });
+    const responseError = assetResponseError(response, contract);
+    if (responseError) {
+      lastError = responseError;
+    } else {
+      const responseBytes = new Uint8Array(await response.arrayBuffer());
+      if (!sameBytes(responseBytes, expectedBytes)) {
+        lastError = new Error(`정적 asset 내용 smoke 실패(path=${contract.path}, attempts=${attempt})`);
+      } else {
+        const etag = response.headers.get("ETag");
+        if (!etag) {
+          lastError = new Error(`정적 asset ETag smoke 실패(path=${contract.path}, attempts=${attempt})`);
+        } else {
+          const revalidated = await fetchImpl(`${target.origin}${contract.path}`, {
+            headers: { "If-None-Match": etag },
+            redirect: "manual"
+          });
+          if (revalidated.status === 304) return;
+          const revalidatedError = assetResponseError(revalidated, contract);
+          const revalidatedBytes = revalidatedError
+            ? null
+            : new Uint8Array(await revalidated.arrayBuffer());
+          const stableFullResponse = !revalidatedError
+            && revalidated.headers.get("ETag") === etag
+            && sameBytes(revalidatedBytes, expectedBytes);
+          if (stableFullResponse) return;
+          lastError = new Error(`정적 asset 재검증 smoke 실패(path=${contract.path}, status=${revalidated.status}, attempts=${attempt})`);
+        }
+      }
+    }
+    if (attempt < assetAttempts) await waitImpl(assetRetryMs);
+  }
+  throw lastError;
+}
+
+function assetResponseError(response, contract) {
+  const contentType = String(response.headers.get("Content-Type") || "").toLowerCase();
+  if (response.status !== 200 || !contentType.startsWith(contract.contentType)) {
+    return new Error(`정적 asset smoke 실패(path=${contract.path}, status=${response.status}, content-type=${contentType || "none"})`);
+  }
+  for (const [header, expected] of Object.entries(PUBLIC_ASSET_SECURITY_HEADERS)) {
+    if (response.headers.get(header) !== expected) {
+      return new Error(`정적 asset 보안 header smoke 실패(path=${contract.path}, header=${header})`);
+    }
+  }
+  return null;
+}
+
+async function readPublicAsset(assetPath) {
+  return readFile(new URL(`../public${assetPath}`, import.meta.url));
+}
+
+function toBytes(value) {
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  return new TextEncoder().encode(String(value));
+}
+
+function sameBytes(left, right) {
+  if (!left || !right || left.byteLength !== right.byteLength) return false;
+  for (let index = 0; index < left.byteLength; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
 }
 
 async function authenticateSmokeUser({ origin, username, password, returnUrl, label, fetchImpl }) {
@@ -305,7 +387,7 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function resolveRetryPolicy({ healthAttempts, healthRetryMs }) {
+function resolveRetryPolicy({ healthAttempts, healthRetryMs, assetAttempts, assetRetryMs }) {
   return Object.freeze({
     healthAttempts: boundedPositiveInteger(
       healthAttempts,
@@ -316,6 +398,22 @@ function resolveRetryPolicy({ healthAttempts, healthRetryMs }) {
       healthRetryMs,
       "SMOKE_HEALTH_RETRY_MS",
       MAX_HEALTH_RETRY_MS
+    ),
+    ...resolveAssetRetryPolicy({ assetAttempts, assetRetryMs })
+  });
+}
+
+function resolveAssetRetryPolicy({ assetAttempts, assetRetryMs }) {
+  return Object.freeze({
+    assetAttempts: boundedPositiveInteger(
+      assetAttempts,
+      "SMOKE_ASSET_ATTEMPTS",
+      MAX_ASSET_ATTEMPTS
+    ),
+    assetRetryMs: boundedPositiveInteger(
+      assetRetryMs,
+      "SMOKE_ASSET_RETRY_MS",
+      MAX_ASSET_RETRY_MS
     )
   });
 }
@@ -342,7 +440,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     verifyPublicSurface: process.env.SMOKE_VERIFY_PUBLIC_SURFACE === "1",
     publicOnly: process.env.SMOKE_PUBLIC_ONLY === "1",
     healthAttempts: process.env.SMOKE_HEALTH_ATTEMPTS || HEALTH_ATTEMPTS,
-    healthRetryMs: process.env.SMOKE_HEALTH_RETRY_MS || HEALTH_RETRY_MS
+    healthRetryMs: process.env.SMOKE_HEALTH_RETRY_MS || HEALTH_RETRY_MS,
+    assetAttempts: process.env.SMOKE_ASSET_ATTEMPTS || ASSET_ATTEMPTS,
+    assetRetryMs: process.env.SMOKE_ASSET_RETRY_MS || ASSET_RETRY_MS
   });
   console.log(`✓ release smoke 통과: ${JSON.stringify(result)}`);
 }
