@@ -41,7 +41,7 @@ jobs:
       RELEASE_SMOKE_OPERATION_ID: release-${{ github.run_id }}-${{ github.sha }}
       D1_RECOVERY_EVIDENCE_PATH: ${{ github.workspace }}/cloudflare-app/release-evidence/d1-recovery.json
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Initialize release-scoped credential path
@@ -52,7 +52,7 @@ jobs:
             echo "Production release must run from refs/heads/main."
             exit 1
           fi
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -173,7 +173,7 @@ jobs:
             "$PRODUCTION_URL/signup")" = "404"
       - name: Upload pre-mutation recovery and migration evidence
         if: steps.classify_release.outputs.release_class != 'asset-only'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pre-mutation-evidence-${{ github.sha }}-${{ github.run_id }}
           path: |
@@ -338,7 +338,7 @@ jobs:
         run: npm run smoke:principal -- --action cleanup
       - name: Upload release evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-release-${{ github.sha }}-${{ github.run_id }}
           path: cloudflare-app/release-evidence/

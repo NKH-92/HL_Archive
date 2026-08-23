@@ -6,6 +6,16 @@ const ci = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.
 const deploy = await readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8");
 const provisionAdmin = await readFile(new URL("../../.github/workflows/provision-admin.yml", import.meta.url), "utf8");
 const remediateMainAdmin = await readFile(new URL("../../.github/workflows/remediate-main-admin.yml", import.meta.url), "utf8");
+const actionWorkflows = await Promise.all([
+  "ci.yml",
+  "deploy.yml",
+  "prepare-fresh-core.yml",
+  "provision-admin.yml",
+  "provision-users.yml",
+  "remediate-main-admin.yml",
+  "branch-hygiene.yml"
+].map((name) => readFile(new URL(`../../.github/workflows/${name}`, import.meta.url), "utf8")));
+const dependabot = await readFile(new URL("../../.github/dependabot.yml", import.meta.url), "utf8");
 const owners = await readFile(new URL("../../.github/CODEOWNERS", import.meta.url), "utf8");
 const smokeRelease = await readFile(new URL("../scripts/smoke-release.mjs", import.meta.url), "utf8");
 const wrangler = await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8");
@@ -19,6 +29,20 @@ const guardedD1Scripts = await Promise.all([
   "release-smoke-principal.mjs",
   "remediate-main-admin-guarded.mjs"
 ].map(async (name) => [name, await readFile(new URL(`../scripts/${name}`, import.meta.url), "utf8")]));
+
+test("공식 GitHub Actions는 Node 24 지원 세대를 immutable SHA로 고정하고 자동 갱신한다", () => {
+  const references = actionWorkflows.flatMap((workflow) => [...workflow.matchAll(
+    /uses:\s*actions\/(checkout|setup-node|upload-artifact)@([a-f0-9]{40})\s+# v(\d+)(?:\.\d+\.\d+)?/g
+  )]);
+
+  assert.ok(references.length >= 16, "공식 action 참조를 모두 검사해야 합니다.");
+  for (const [, action, sha, major] of references) {
+    assert.equal(sha.length, 40, `${action}은 full commit SHA로 고정해야 합니다.`);
+    assert.ok(Number(major) >= 5, `${action}은 Node 24 지원 major를 사용해야 합니다.`);
+  }
+  assert.match(dependabot, /package-ecosystem: "github-actions"/);
+  assert.match(dependabot, /directory: "\/"[\s\S]*interval: "weekly"/);
+});
 
 test("PR required CI는 verify, audit, Worker dry-run과 증빙 보존을 강제한다", () => {
   assert.match(ci, /pull_request:[\s\S]*branches: \[main\]/);
