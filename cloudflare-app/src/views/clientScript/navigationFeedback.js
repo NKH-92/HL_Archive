@@ -41,6 +41,24 @@ export function navigationFeedbackScript() {
         if (item.getAttribute('href') === activeHref) { item.classList.add('active'); item.setAttribute('aria-current', 'page'); }
       });
 
+      // 검색·위치는 항상 보이고, 접힌 업무 그룹은 현재 화면과 사용자가 열어 둔 상태를 반영한다.
+      var storedNavigationGroups = [];
+      try {
+        storedNavigationGroups = JSON.parse(localStorage.getItem('hanlimNavigationGroups') || '[]');
+        if (!Array.isArray(storedNavigationGroups)) storedNavigationGroups = [];
+      } catch { storedNavigationGroups = []; }
+      var navigationGroups = Array.from(document.querySelectorAll('[data-nav-group]'));
+      navigationGroups.forEach(function (group) {
+        var key = group.getAttribute('data-nav-group') || '';
+        var hasActiveItem = Boolean(group.querySelector('.archive-nav-item.active, .nav-sub-link.active'));
+        group.classList.toggle('has-active', hasActiveItem);
+        group.open = hasActiveItem || storedNavigationGroups.includes(key);
+        group.addEventListener('toggle', function () {
+          var opened = navigationGroups.filter(function (item) { return item.open; }).map(function (item) { return item.getAttribute('data-nav-group') || ''; }).filter(Boolean);
+          try { localStorage.setItem('hanlimNavigationGroups', JSON.stringify(opened)); } catch {}
+        });
+      });
+
       var toastKey = new URLSearchParams(location.search).get('toast');
       if (toastKey) {
         var toastParams = new URLSearchParams(location.search);

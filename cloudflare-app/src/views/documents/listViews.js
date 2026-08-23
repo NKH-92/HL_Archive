@@ -92,9 +92,11 @@ export function disposalWorkspacePage({
 }
 
 function disposalTargetsView({ documents, categories, racks, years, filters, capped, limit }) {
+  const activeFilterCount = [filters.disposalDueYear, filters.categoryId, filters.rackId, filters.query].filter(Boolean).length;
   return `
     <div class="disposal-shell">
-    <section class="panel">
+    <button type="button" class="button secondary mobile-filter-toggle disposal-filter-toggle" data-filter-toggle aria-controls="disposal-target-filters" aria-expanded="false"><i class="fa-solid fa-sliders" aria-hidden="true"></i>폐기 대상 필터${activeFilterCount ? ` ${activeFilterCount}개 적용` : ""}</button>
+    <section id="disposal-target-filters" class="panel" data-collapsible-filters data-active="false">
       <form method="get" action="/documents/disposal" class="filter-bar disposal-filter">
         <label><span>폐기 예정 연도</span><select name="disposalDueYear"><option value="">전체</option>${years.map((year) => option(year, `${year}년`, filters.disposalDueYear)).join("")}</select></label>
         <label><span>대분류</span><select name="category"><option value="">전체</option>${categories.map((item) => option(item.id, item.name, filters.categoryId)).join("")}</select></label>
@@ -104,6 +106,7 @@ function disposalTargetsView({ documents, categories, racks, years, filters, cap
         <a class="button secondary" href="/documents/disposal">초기화</a>
       </form>
     </section>
+    ${disposalFilterChips({ filters, categories, racks })}
     <section class="panel results-panel">
       <div class="section-title"><h2>폐기 대상</h2><span class="count-badge">${documents.length}${capped ? "+" : ""}건</span></div>
       ${capped ? `<div class="alert warning">선택 폐기는 한 번에 ${limit}건까지 처리하므로 앞의 ${limit}건만 표시됩니다. 조건에 맞는 문서 전체를 처리하려면 상단의 <a href="/disposal-batches/new">정기폐기</a>를 사용하세요.</div>` : ""}
@@ -111,6 +114,25 @@ function disposalTargetsView({ documents, categories, racks, years, filters, cap
       ${bulkActionBar("/documents/disposal/process", filters, limit)}
     </section>
     </div>`;
+}
+
+function disposalFilterChips({ filters = {}, categories = [], racks = [] }) {
+  const chips = [];
+  const add = (key, label) => {
+    const next = { ...filters, [key]: "" };
+    chips.push(`<a class="chip active" href="${escapeHtml(disposalListUrl(next))}">${escapeHtml(label)} <span aria-hidden="true">×</span></a>`);
+  };
+  if (filters.query) add("query", `검색: ${filters.query}`);
+  if (filters.disposalDueYear) add("disposalDueYear", `${filters.disposalDueYear}년`);
+  if (filters.categoryId) {
+    const category = categories.find((item) => Number(item.id) === Number(filters.categoryId));
+    add("categoryId", `대분류: ${category?.name || filters.categoryId}`);
+  }
+  if (filters.rackId) {
+    const rack = racks.find((item) => Number(item.id) === Number(filters.rackId));
+    add("rackId", rack ? `${rack.zone_number}구역 ${rack.rack_number}번 랙` : `랙 ${filters.rackId}`);
+  }
+  return chips.length ? `<nav class="active-filter-chips disposal-filter-chips" aria-label="적용된 폐기 대상 필터">${chips.join("")}<a class="chip" href="/documents/disposal">전체 초기화</a></nav>` : "";
 }
 
 function disposalHistoryView(history, pagination, filters) {

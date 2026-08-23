@@ -416,11 +416,13 @@ function workflowStepper(currentStep = 1) {
     ["변경 검토", "추가·변경·제외"],
     ["승인·적용", "권한 확인 후 원자 반영"]
   ];
-  return `<ol class="workflow-stepper" aria-label="엑셀 대장 동기화 단계">${steps.map(([label, caption], index) => {
+  const safeCurrentStep = Math.min(Math.max(Number(currentStep) || 1, 1), steps.length);
+  const [currentLabel, currentCaption] = steps[safeCurrentStep - 1];
+  return `<div class="workflow-progress"><ol class="workflow-stepper" aria-label="엑셀 대장 동기화 단계">${steps.map(([label, caption], index) => {
     const step = index + 1;
-    const state = step < currentStep ? "is-complete" : step === currentStep ? "is-current" : "";
-    return `<li class="workflow-step ${state}"${step === currentStep ? ` aria-current="step"` : ""}><span class="workflow-step-index">${step < currentStep ? "✓" : step}</span><span><strong>${label}</strong><small>${caption}</small></span></li>`;
-  }).join("")}</ol>`;
+    const state = step < safeCurrentStep ? "is-complete" : step === safeCurrentStep ? "is-current" : "";
+    return `<li class="workflow-step ${state}"${step === safeCurrentStep ? ` aria-current="step"` : ""}><span class="workflow-step-index">${step < safeCurrentStep ? "✓" : step}</span><span class="workflow-step-copy"><strong>${label}</strong><small>${caption}</small></span></li>`;
+  }).join("")}</ol><p class="workflow-current-step"><span>현재 단계 ${safeCurrentStep}/${steps.length}</span><strong>${currentLabel}</strong><small>${currentCaption}</small></p></div>`;
 }
 
 function actionBadge(action) {

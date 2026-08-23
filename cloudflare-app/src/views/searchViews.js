@@ -387,10 +387,31 @@ function viewerUrl({ query, filters = {}, patch = {}, page = 1 }) {
 export function qaPage({ session, support = {} }) {
   const contactName = [support.department, support.name].filter(Boolean).join(" / ");
   const contactEmail = support.email || "";
-  return page("Q&A", `
+  const capabilities = capabilitiesFromSession(session);
+  const tasks = [
+    ["/app", "fa-magnifying-glass", "문서 찾기", "문서번호·문서명·보관 위치로 검색합니다."],
+    ["/floor-plan", "fa-location-dot", "보관 위치 확인", "구역과 랙 배치를 도면에서 확인합니다."]
+  ];
+  if (capabilities.canManageDocuments) {
+    tasks.push(["/documents/new", "fa-file-circle-plus", "문서 등록", "문서 정보와 보관 위치를 입력합니다."]);
+    tasks.push(["/documents/import", "fa-file-excel", "엑셀 대장 동기화", "최신 대장을 검증한 뒤 변경 사항을 반영합니다."]);
+  }
+  if (capabilities.canManageDisposals) {
+    tasks.push(["/documents/disposal", "fa-box-archive", "문서 폐기", "폐기 대상을 필터링하고 선택해 처리합니다."]);
+  }
+  if (capabilities.canOpenManagement) {
+    tasks.push(["/admin", "fa-list-check", "확인할 일", "운영 중 확인이 필요한 항목을 점검합니다."]);
+  }
+  return page("도움말·문의", `
     <section class="page-head">
-      <h1>Q&amp;A</h1>
+      <div><h1>도움말·문의</h1><p class="muted">하려는 작업을 선택하거나 검색 방법을 확인하세요.</p></div>
       ${contactEmail ? `<a class="button secondary" href="mailto:${escapeHtml(contactEmail)}">담당자 문의</a>` : ""}
+    </section>
+    <section class="panel help-task-panel" aria-labelledby="help-task-title">
+      <div class="section-title"><h2 id="help-task-title">무엇을 하시나요?</h2><span class="count-badge">${tasks.length}개 작업</span></div>
+      <nav class="help-task-grid" aria-label="주요 작업 바로가기">
+        ${tasks.map(([href, icon, label, description]) => `<a class="help-task-card" href="${href}"><i class="fa-solid ${icon}" aria-hidden="true"></i><span><strong>${label}</strong><small>${description}</small></span><span class="help-task-arrow" aria-hidden="true">›</span></a>`).join("")}
+      </nav>
     </section>
     <section class="content-grid">
       <article class="panel">

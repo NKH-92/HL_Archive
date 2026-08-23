@@ -15,6 +15,7 @@ export function floorPlanStyles() {
     .floor-plan-tools { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); color: var(--gray-500); font-size: 12.5px; }
     .floor-rack-search { flex: 1 1 260px; max-width: 420px; }
     .floor-plan-page-head p { max-width: 720px; margin: var(--sp-1) 0 0; color: var(--gray-500); font-size: 13px; }
+    .mobile-floor-plan-note { display: none; }
     .archive-floor-plan-page { overflow: hidden; }
     .floor-plan-scroll { width: 100%; overflow-x: auto; padding-bottom: var(--sp-1); scrollbar-gutter: stable; }
     /* aspect-ratio는 반드시 도면 이미지 원본 비율(1024x797)과 같아야 퍼센트 오버레이가 어긋나지 않는다. */

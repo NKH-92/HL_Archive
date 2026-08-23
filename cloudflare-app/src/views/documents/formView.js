@@ -100,7 +100,7 @@ export function documentFormPage({
         </div>
       </form>
 
-      <details class="panel form-review" open data-form-review>
+      <details class="panel form-review" data-form-review>
         <summary>${isInformationEdit ? "정보 수정 내용 확인" : "등록 내용 확인"}</summary>
         <dl>
           <div><dt>문서번호</dt><dd class="mono" data-summary="documentNumber">-</dd></div>
@@ -165,6 +165,8 @@ function documentFormScript(showLocation) {
   return `<script>(function () {
     var form = document.querySelector('[data-document-form]');
     if (!form) return;
+    var formReview = document.querySelector('[data-form-review]');
+    if (formReview) formReview.open = !window.matchMedia('(max-width: 760px)').matches;
     var summary = function (name, value) {
       var target = document.querySelector('[data-summary="' + name + '"]');
       if (target) target.textContent = value || '-';

@@ -121,7 +121,13 @@ test("전역 CSS는 desktop·mobile·print·reduced-motion 계약을 포함한�
   assert.match(css, /\.viewer-result-row > \.check-col \{ position: absolute;[^}]*width: 44px;[^}]*min-height: 44px; \}/);
   assert.match(css, /\.viewer-result-name a \{ display: -webkit-box;[^}]*-webkit-line-clamp: 2; \}/);
   assert.match(css, /\.viewer-result-row \.mono \.viewer-result-value \{ min-width: 0; white-space: nowrap; overflow-wrap: normal; \}/);
-  assert.match(css, /\.workflow-stepper \{ grid-template-columns: repeat\(5, minmax\(104px, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.workflow-stepper \{ grid-template-columns: repeat\(5, minmax\(0, 1fr\)\);[^}]*overflow: hidden/);
+  assert.match(css, /\.workflow-current-step \{ display: grid; grid-template-columns: auto minmax\(0, 1fr\)/);
+  assert.match(css, /\.mini-rack-grid \{ inline-size: 100%; min-inline-size: 0; grid-template-columns: repeat\(var\(--cols\), minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.modal, \.modal\.disposal-review-modal \{ width: calc\(100vw - var\(--sp-6\)\);[^}]*overflow-x: clip/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.modal-actions \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /\.zone-rack-links a \{ min-height: 44px; align-items: center; \}/);
+  assert.match(css, /\.help-task-grid \{ grid-template-columns: 1fr; \}/);
   assert.match(css, /\.document-detail-head \{ grid-template-columns: minmax\(0, 1fr\); max-inline-size: none; margin: calc\(-1 \* var\(--sp-3\)\) calc\(-1 \* var\(--sp-3\)\) var\(--sp-3\); padding: var\(--sp-5\) calc\(var\(--sp-4\) \+ var\(--sp-3\)\)/);
   assert.match(css, /\.icon-button \{ min-height: 36px; width: 36px;[\s\S]*color: var\(--gray-600\)/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.icon-button \{ width: 44px; \}/);

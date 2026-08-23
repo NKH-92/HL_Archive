@@ -49,6 +49,7 @@ export function page(title, body, session, status = 200) {
 
 function header(session) {
   const capabilities = capabilitiesFromSession(session);
+  /** @type {Array<[string, string, string]>} */
   const documentLinks = [
     ["/app", "fa-magnifying-glass", "문서 검색"],
     ["/floor-plan", "fa-location-dot", "보관 위치"]
@@ -88,7 +89,7 @@ function header(session) {
   const navLink = ([href, icon, text], sub = false) =>
     `<a href="${href}" class="${sub ? "nav-sub-link" : "archive-nav-item"}"><i class="fa-solid ${icon}" aria-hidden="true"></i>${escapeHtml(text)}</a>`;
   const navGroup = (label, links, extras = "") => links.length || extras
-    ? `<details class="nav-group" aria-label="${escapeHtml(label)}"><summary class="nav-group-label">${escapeHtml(label)}</summary><div class="nav-group-content">${links.map((link) => navLink(link)).join("")}${extras}</div></details>`
+    ? `<details class="nav-group" aria-label="${escapeHtml(label)}" data-nav-group="${escapeHtml(label)}"><summary class="nav-group-label">${escapeHtml(label)}</summary><div class="nav-group-content">${links.map((link) => navLink(link)).join("")}${extras}</div></details>`
     : "";
   const nestedGroup = (label, icon, links) => links.length
     ? `<details class="nav-settings"><summary><i class="fa-solid ${icon}" aria-hidden="true"></i>${escapeHtml(label)}</summary><div>${links.map((link) => navLink(link, true)).join("")}</div></details>`
@@ -114,7 +115,7 @@ function header(session) {
       <button type="button" class="command-trigger" data-command-open aria-haspopup="dialog"><i class="fa-solid fa-magnifying-glass"></i><span>메뉴 찾기</span><kbd>Ctrl+K</kbd></button>
       <nav id="primary-navigation" aria-label="주 메뉴" data-nav-menu>
         <button type="button" class="drawer-close" data-drawer-close aria-label="메뉴 닫기">×</button>
-        ${navGroup("문서", documentLinks)}
+        <div class="nav-primary-links" role="group" aria-label="주요 문서 메뉴">${documentLinks.map((link) => navLink(link)).join("")}</div>
         ${navGroup("업무", workLinks)}
         ${navGroup("운영", operationLinks, operationExtras)}
         <div class="nav-user">

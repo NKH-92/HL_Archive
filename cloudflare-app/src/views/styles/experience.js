@@ -57,6 +57,7 @@ export function experienceStyles() {
     .workflow-step.is-complete .workflow-step-index { background: var(--success-soft); color: var(--success); }
     .workflow-step.is-current .workflow-step-index { background: var(--action); color: var(--action-ink); box-shadow: 0 0 0 3px var(--action-soft); }
     .workflow-step.is-current strong { color: var(--gray-900); }
+    .workflow-current-step { display: none; }
     .snapshot-intro { border-top: 3px solid var(--primary); }
     .snapshot-apply-form { margin-top: var(--sp-4); padding: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--gray-50); }
     .snapshot-final-apply { border-top: 3px solid var(--action); }
@@ -122,6 +123,7 @@ export function experienceStyles() {
       .topbar .brand small { color: rgba(255, 255, 255, .6); }
       .topbar .archive-nav-item, .topbar .nav-sub-link, .topbar .logout-link, .topbar .nav-settings summary { color: rgba(255, 255, 255, .82); }
       .topbar .nav-group-label { color: rgba(255, 255, 255, .55); }
+      .topbar .nav-group.has-active > .nav-group-label { background: rgba(255, 255, 255, .12); color: var(--surface); box-shadow: inset var(--sp-1) 0 0 var(--action); }
       .topbar .archive-nav-item:hover, .topbar .nav-sub-link:hover, .topbar .logout-link:hover, .topbar .nav-settings summary:hover { background: rgba(255, 255, 255, .12); color: var(--surface); }
       .topbar .archive-nav-item.active { position: relative; background: rgba(255, 255, 255, .14); color: var(--surface); }
       .topbar .archive-nav-item.active::before { content: ""; position: absolute; left: calc(-1 * var(--sp-3)); top: var(--sp-2); bottom: var(--sp-2); width: var(--sp-1); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: var(--action); }
@@ -171,13 +173,15 @@ export function experienceStyles() {
       .mini-column-guide strong { padding-inline: var(--sp-2); }
       .mini-compass { display: flex; border-radius: var(--r-md); line-height: 1.45; }
       .admin-status-panel { align-items: flex-start; }
-      .workflow-stepper { grid-template-columns: repeat(5, minmax(104px, 1fr)); overflow-x: auto; padding: var(--sp-3); scroll-snap-type: x proximity; }
+      .workflow-stepper { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: var(--sp-2); overflow: hidden; padding: var(--sp-3) var(--sp-2); }
       .workflow-step { grid-template-columns: 24px; justify-items: center; text-align: center; }
-      .workflow-step { scroll-snap-align: start; }
       .workflow-step:not(:last-child)::after { top: 12px; left: calc(50% + var(--sp-3)); right: calc(-50% + var(--sp-3)); }
       .workflow-step-index { width: 24px; height: 24px; }
-      .workflow-step small { display: none; }
-      .workflow-step strong { font-size: 12px; white-space: nowrap; }
+      .workflow-step-copy { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .workflow-current-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); align-items: baseline; margin: 0 0 var(--sp-4); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--primary-soft); }
+      .workflow-current-step span { grid-row: 1 / span 2; color: var(--primary); font-size: 12px; font-weight: 800; white-space: nowrap; }
+      .workflow-current-step strong { font-size: 13.5px; }
+      .workflow-current-step small { color: var(--gray-600); font-size: 12px; }
       .zone-overview { grid-template-columns: 1fr; }
     }`;
 }
