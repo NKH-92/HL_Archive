@@ -25,14 +25,15 @@ test("rack 실물 규격은 7열 × 6선반이고 저장 face는 A/B를 유지�
   assert.equal(locationLabel({ zone_number: 1, rack_number: 13, is_single_sided: 0, rack_face: "B", column_number: 7, shelf_number: 6 }), "1구역 / 13-2번 랙 / 7열 / 6선반");
 });
 
-test("1구역 1번 단면과 양면 B면은 열을 mirror하고 A면은 왼쪽부터 표시한다", () => {
+test("모든 단면·양면은 바라본 기준으로 왼쪽부터 열을 표시한다", () => {
   const special = { zone_number: 1, rack_number: 1, is_single_sided: 1 };
-  assert.equal(rackColumnOrigin(special, "A"), "right");
-  assert.deepEqual(displayedColumns(special, "A"), [7, 6, 5, 4, 3, 2, 1]);
+  assert.equal(rackColumnOrigin(special, "A"), "left");
+  assert.deepEqual(displayedColumns(special, "A"), [1, 2, 3, 4, 5, 6, 7]);
   const double = { zone_number: 1, rack_number: 2, is_single_sided: 0 };
   assert.deepEqual(displayedColumns(double, "A"), [1, 2, 3, 4, 5, 6, 7]);
-  assert.deepEqual(displayedColumns(double, "B"), [7, 6, 5, 4, 3, 2, 1]);
-  assert.match(rackViewOrientation(special, "A").description, /오른쪽이 1열/);
+  assert.deepEqual(displayedColumns(double, "B"), [1, 2, 3, 4, 5, 6, 7]);
+  assert.match(rackViewOrientation(special, "A").description, /왼쪽이 1열/);
+  assert.match(rackViewOrientation(double, "B").description, /2면을 바라본 기준/);
 });
 
 test("floor plan geometry와 slot presenter는 운영 좌표·label을 유지한다", () => {

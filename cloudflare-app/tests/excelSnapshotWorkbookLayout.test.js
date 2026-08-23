@@ -110,6 +110,8 @@ test("실제 생성 workbook은 구역 열을 두 시트에 표시하고 O~Q 관
   assert.equal(print.pageSetup.printArea, "A1:N7");
   assert.equal(print.headerFooter.oddFooter, "&C&P / &N&RHLF-GR-04-15 / Rev.2");
   assert.match(String(guide.getCell("B2").value), /한글 14개 열/);
+  const rackGuideRow = guide.getRows(1, guide.rowCount).find((row) => row.getCell(1).value === "랙 위치");
+  assert.match(String(rackGuideRow?.getCell(2).value), /왼쪽부터 1열, 아래부터 1선반/);
 
   const parsed = await api.readExcelSnapshot({
     name: "한림_문서고_관리대장_2026-08-21.xlsx",

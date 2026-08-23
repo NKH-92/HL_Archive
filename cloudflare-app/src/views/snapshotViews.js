@@ -99,6 +99,7 @@ export function documentSnapshotPage({ session, state, snapshots = [], error = "
       <div class="section-title"><h2>운영 원칙</h2><span class="count-badge">안전 동기화</span></div>
       <ul class="snapshot-rules">
         <li>오류가 한 건이라도 있으면 현재 문서대장은 변경하지 않습니다.</li>
+        <li>랙 위치는 랙과 면에 관계없이 해당 면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반을 입력합니다.</li>
         <li>엑셀에서 사라진 문서는 삭제 대신 대장에서 제외해 감사·세트·이동 이력을 보존합니다.</li>
         <li>시스템에서 개별 처리한 추가·정보 수정·개정·위치 이동·폐기는 다음 엑셀 추출과 인쇄용 관리대장에 포함됩니다.</li>
         <li>개정번호는 숫자만 입력하며 화면에서는 Rev.가 붙습니다. 공란 또는 N/A는 DB에 NULL로 저장되고 검색 화면과 다음 추출에서는 N/A로 표시됩니다.</li>

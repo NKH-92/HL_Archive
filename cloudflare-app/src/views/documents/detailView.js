@@ -179,7 +179,7 @@ function renderDocumentFloorPlan(document, floorPlan = []) {
         <div id="${scrollId}" class="doc-floor-plan-scroll" data-document-floor-scroll tabindex="0" aria-label="${escapeHtml(region.label)} 문서 위치 도면. 확대 보기에서는 도면 안에서 좌우로 이동할 수 있습니다.">
           ${zoneFloorPlanView(region, { hitCode: document.rack_code, hitFace: document.rack_face, interactive: false, spotlight: true })}
         </div>
-        <p class="muted">현재 핀이 이 문서가 보관된 ${single ? `단면 랙입니다. ${orientation.description}` : `${escapeHtml(rackLabel)} 면(양면 랙의 ${document.rack_face === "B" ? "우측" : "좌측"})입니다. 1열은 통로 안쪽인 ${orientation.originLabel}에서 시작합니다.`}</p>
+        <p class="muted">현재 핀이 이 문서가 보관된 ${single ? `단면 랙입니다. ${orientation.description}` : `${escapeHtml(rackLabel)} 면(양면 랙의 ${document.rack_face === "B" ? "우측" : "좌측"})입니다. ${orientation.description}`}</p>
         ${rack ? `<a class="button secondary sm rack-result-link" href="/app?rack=${Number(rack.id)}&amp;status=active&amp;sort=location">이 랙의 보관중 문서 보기</a>` : ""}
       </div>
     </section>
@@ -193,7 +193,6 @@ function renderMiniRackContent(document) {
   const activeRow = Number(document.shelf_number || 0);
   const orientation = rackViewOrientation(document);
   const columns = Array.from({ length: cols }, (_, index) => index + 1);
-  if (orientation.origin === "right") columns.reverse();
   let slots = "";
 
   for (let row = rows; row >= 1; row -= 1) {
@@ -213,9 +212,9 @@ function renderMiniRackContent(document) {
   return `<style>[data-mini-rack-layout="${layoutKey}"]{--cols:${cols};--rows:${rows};--grid-min:${cols * 44}px;}</style>
       <div class="section-title"><h2 id="rack-position-title">랙 위치 · ${document.zone_number ? `${document.zone_number}구역 ` : ""}${escapeHtml(rackLabel || document.rack_code)}번 랙</h2><span class="count-badge">${activeCol}열 ${activeRow}선반</span></div>
       <div class="mini-column-guide" data-column-origin="${orientation.origin}">
-        <span>${orientation.origin === "left" ? "1열 · 통로 안쪽" : `${cols}열 · 바깥쪽`}</span>
+        <span>1열 · 왼쪽</span>
         <strong>사용자 시선</strong>
-        <span>${orientation.origin === "right" ? "1열 · 통로 안쪽" : `${cols}열 · 바깥쪽`}</span>
+        <span>${cols}열 · 오른쪽</span>
       </div>
       <div class="mini-rack-stage">
         <div class="mini-axis" aria-hidden="true"><span>위 ↑</span><span>아래 ↓</span></div>

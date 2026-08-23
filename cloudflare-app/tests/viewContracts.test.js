@@ -112,6 +112,11 @@ test("랙 목록·설정·상세·폼은 위치 구조와 입력 계약을 공�
   }), "1-02 랙");
   assert.match(details, /role="grid" aria-rowcount="6" aria-colcount="7"/);
   assert.match(details, /2-2면 위치 격자/);
+  assert.match(details, /<span>1열<\/span><strong>면을 바라본 모습<\/strong><span>7열<\/span>/);
+  assert.ok(details.indexOf(">1열 · 6선반<") < details.indexOf(">7열 · 6선반<"));
+  assert.ok(details.indexOf(">1열 · 6선반<") < details.indexOf(">1열 · 1선반<"));
+  assert.match(details, /왼쪽부터 1열, 아래부터 1선반/);
+  assert.doesNotMatch(details, /오른쪽이 1열|1열 오른쪽|통로 안쪽/);
   assert.match(details, /href="\/racks\/7\/edit"/);
 
   const form = await htmlPage(rackFormPage({
@@ -292,6 +297,7 @@ test("CSV 가져오기 목록과 생성 폼은 작업 링크·multipart 입력 �
   assertPostForm(form, "/document-import-jobs", ["csvFile", "csvText"]);
   assert.match(form, /enctype="multipart\/form-data"/);
   assert.match(form, /accept="\.csv,text\/csv"/);
+  assert.match(form, /면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반/);
 });
 
 test("엑셀 대장 동기화 화면은 단일 엑셀 전체 동기화 흐름만 제공한다", async () => {
@@ -323,6 +329,7 @@ test("엑셀 대장 동기화 화면은 단일 엑셀 전체 동기화 흐름만
   assert.match(managerMain, /class="workflow-step is-current" aria-current="step"/);
   assert.match(managerMain, /최신 대장을 추출해 수정한 파일/);
   assert.match(managerMain, /개정 이력의 문서번호·개정번호 변경/);
+  assert.match(managerMain, /랙과 면에 관계없이 해당 면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반/);
 
   const detail = await htmlPage(documentSnapshotDetailPage({
     session: admin,
