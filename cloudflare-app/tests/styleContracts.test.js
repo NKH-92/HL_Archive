@@ -101,6 +101,10 @@ test("전역 CSS는 desktop·mobile·print·reduced-motion 계약을 포함한�
   assert.match(css, /@media print[\s\S]*\.print-only/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.viewer-result-table/);
+  assert.match(css, /\.bulk-bar \{ position: fixed;/);
+  assert.match(css, /\.app-shell:has\(\.bulk-bar:not\(\[hidden\]\)\)/);
+  assert.match(css, /@media \(min-width: 1100px\)[\s\S]*\.bulk-bar \{ left: calc\(240px \+ var\(--sp-6\)\)/);
+  assert.match(css, /\.bulk-check-target \{ display: grid; width: 44px; min-height: 44px;/);
   assert.match(css, /\.archive-map/);
   assert.match(css, /\.search-home-hero \{ position: relative;[\s\S]*min-height: 160px/);
   assert.match(css, /\.search-home \.search-results-controls \{ margin-top: 0; \}/);
@@ -114,7 +118,7 @@ test("전역 CSS는 desktop·mobile·print·reduced-motion 계약을 포함한�
   assert.match(css, /input\[type="checkbox"\], input\[type="radio"\] \{ flex: none; width: 20px; min-width: 20px; min-height: 20px; padding: 0; justify-self: start; \}/);
   assert.match(css, /\.viewer-result-table\.is-selectable \.viewer-result-row,[\s\S]*grid-template-columns: 1fr/);
   assert.match(css, /\.viewer-result-row > \.viewer-result-detail-only \{ display: none; \}/);
-  assert.match(css, /\.viewer-result-row > \.check-col \{ position: absolute;[^}]*width: 20px; \}/);
+  assert.match(css, /\.viewer-result-row > \.check-col \{ position: absolute;[^}]*width: 44px;[^}]*min-height: 44px; \}/);
   assert.match(css, /\.viewer-result-name a \{ display: -webkit-box;[^}]*-webkit-line-clamp: 2; \}/);
   assert.match(css, /\.viewer-result-row \.mono \.viewer-result-value \{ min-width: 0; white-space: nowrap; overflow-wrap: normal; \}/);
   assert.match(css, /\.workflow-stepper \{ grid-template-columns: repeat\(5, minmax\(104px, 1fr\)\)/);
