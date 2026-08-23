@@ -534,6 +534,35 @@
         navigator.sendBeacon('/api/search-click', payload);
       });
 
+      document.querySelectorAll('[data-master-management]').forEach(function (root) {
+        var search = root.querySelector('[data-master-search]');
+        var inactiveToggle = root.querySelector('[data-master-inactive-toggle]');
+        var rows = Array.from(root.querySelectorAll('[data-master-row]'));
+        var empty = root.querySelector('[data-master-filter-empty]');
+        if (!search || !inactiveToggle || !rows.length) return;
+
+        var normalizeMasterText = function (value) {
+          return String(value || '').trim().toLocaleLowerCase('ko-KR');
+        };
+        var applyMasterFilters = function () {
+          var query = normalizeMasterText(search.value);
+          var showInactive = inactiveToggle.checked;
+          var visible = 0;
+          rows.forEach(function (row) {
+            var matchesState = row.dataset.masterActive === 'true' || showInactive;
+            var matchesText = !query || normalizeMasterText(row.dataset.masterSearchText).includes(query);
+            var matches = matchesState && matchesText;
+            row.hidden = !matches;
+            if (!matches && row.open) row.open = false;
+            if (matches) visible += 1;
+          });
+          if (empty) empty.hidden = visible > 0;
+        };
+
+        search.addEventListener('input', applyMasterFilters);
+        inactiveToggle.addEventListener('change', applyMasterFilters);
+        applyMasterFilters();
+      });
       // 서버 즉시 검색: Core projection 후보 → Core 재검증 → 최대 30건 cursor 응답.
       var viewerApp = document.querySelector('[data-viewer-app]');
       var viewerForm = document.querySelector('[data-viewer-form]');

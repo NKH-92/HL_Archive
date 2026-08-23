@@ -107,6 +107,18 @@ test("접이식 내비게이션은 현재 그룹을 열고 사용자가 연 상�
   assert.match(script, /localStorage\.setItem\('hanlimNavigationGroups'/);
 });
 
+test("대분류 관리 목록은 이름·설명과 사용 상태로 즉시 좁혀 본다", () => {
+  const script = clientScriptModule.clientScript();
+
+  assert.match(script, /document\.querySelectorAll\('\[data-master-management\]'\)/);
+  assert.match(script, /data-master-search/);
+  assert.match(script, /data-master-inactive-toggle/);
+  assert.match(script, /row\.dataset\.masterActive === 'true' \|\| showInactive/);
+  assert.match(script, /normalizeMasterText\(row\.dataset\.masterSearchText\)\.includes\(query\)/);
+  assert.match(script, /row\.hidden = !matches/);
+  assert.match(script, /if \(!matches && row\.open\) row\.open = false/);
+});
+
 test("문서 작업 공간은 검색 단축키·행 탐색·열 설정·선택 폼을 연결한다", () => {
   const script = clientScriptModule.clientScript();
 

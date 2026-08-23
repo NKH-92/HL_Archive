@@ -81,6 +81,44 @@ export function workflowStyles() {
     .check-item input, .check-inline input { width: auto; min-height: auto; accent-color: var(--primary); }
     .master-list { display: grid; gap: var(--sp-2); }
     .master-row, .master-form { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) auto auto; gap: var(--sp-2); align-items: center; }
+    .master-page-head { align-items: center; }
+    .master-page-head > div:first-child { max-width: 760px; }
+    .master-page-head h1 { margin-bottom: var(--sp-1); }
+    .master-page-head p, .master-section-title p, .master-list-heading p { margin: 0; color: var(--gray-500); font-size: 12.5px; }
+    .master-head-guide { display: grid; flex: 0 1 360px; gap: var(--sp-1); padding: var(--sp-3) var(--sp-4); border-left: 3px solid var(--primary); background: var(--surface); }
+    .master-head-guide strong { font-size: 12px; color: var(--gray-600); }
+    .master-head-guide span { color: var(--gray-800); font-size: 13px; font-weight: 600; }
+    .master-create-panel, .master-management { max-width: 1120px; margin-inline: auto; }
+    .master-section-title { align-items: flex-start; }
+    .master-section-title h2, .master-list-heading h2 { margin: 0 0 var(--sp-1); }
+    .master-create-form { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(260px, 2fr) auto; gap: var(--sp-3); align-items: end; }
+    .master-create-form label, .category-master-edit-form label, .master-search-field { display: grid; gap: var(--sp-1); min-width: 0; }
+    .master-create-form label > span, .category-master-edit-form label > span, .master-search-field > span { color: var(--gray-600); font-size: 12px; font-weight: 600; }
+    .master-create-form label small, .category-master-edit-form label small { color: var(--gray-500); font-size: 11.5px; font-weight: 500; }
+    .master-list-heading { display: flex; justify-content: space-between; align-items: end; gap: var(--sp-5); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }
+    .master-list-tools { display: grid; grid-template-columns: minmax(220px, 320px) auto; align-items: end; gap: var(--sp-3); }
+    .master-inactive-toggle { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 36px; color: var(--gray-700); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+    .master-inactive-toggle input { width: auto; min-height: auto; accent-color: var(--primary); }
+    .category-master-list { display: grid; margin-top: var(--sp-2); }
+    .category-master-item { border-bottom: 1px solid var(--line); }
+    .category-master-item:last-child { border-bottom: 0; }
+    .category-master-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-3); min-height: 56px; padding: var(--sp-2) var(--sp-3); cursor: pointer; list-style: none; }
+    .category-master-summary::-webkit-details-marker { display: none; }
+    .category-master-summary:hover { background: var(--gray-50); }
+    .category-master-summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-sm); }
+    .category-master-copy { display: grid; min-width: 0; gap: var(--sp-1); }
+    .category-master-copy strong, .category-master-copy small { overflow-wrap: anywhere; }
+    .category-master-copy strong { font-size: 13.5px; }
+    .category-master-copy small { color: var(--gray-500); font-size: 12px; font-weight: 500; }
+    .category-master-toggle { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--primary); font-size: 12.5px; font-weight: 700; }
+    .category-master-toggle::after { content: "▾"; color: var(--gray-400); }
+    .category-master-item[open] .category-master-toggle::after { content: "▴"; }
+    .category-master-edit { display: grid; gap: var(--sp-4); padding: var(--sp-4); border-top: 1px solid var(--line); background: var(--gray-50); }
+    .category-master-edit-form { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(260px, 2fr) auto; align-items: end; gap: var(--sp-3); }
+    .category-master-state-action { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+    .category-master-state-action p { margin: 0; color: var(--gray-600); font-size: 12.5px; }
+    .master-filter-empty { margin-top: var(--sp-4); }
+    .master-filter-empty small { color: var(--gray-500); }
 
     .manual-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
     .manual-list li { display: grid; gap: var(--sp-1); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--gray-100); }

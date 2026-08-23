@@ -128,6 +128,10 @@ test("전역 CSS는 desktop·mobile·print·reduced-motion 계약을 포함한�
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.modal-actions \{ grid-template-columns: 1fr; \}/);
   assert.match(css, /\.zone-rack-links a \{ min-height: 44px; align-items: center; \}/);
   assert.match(css, /\.help-task-grid \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /\.master-create-form \{ display: grid; grid-template-columns: minmax\(180px, 1fr\) minmax\(260px, 2fr\) auto/);
+  assert.match(css, /\.category-master-summary \{ display: grid; grid-template-columns: minmax\(0, 1fr\) auto auto;[^}]*min-height: 56px/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.master-create-form, \.category-master-edit-form \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.category-master-toggle \{ width: 44px; min-height: 44px;/);
   assert.match(css, /\.document-detail-head \{ grid-template-columns: minmax\(0, 1fr\); max-inline-size: none; margin: calc\(-1 \* var\(--sp-3\)\) calc\(-1 \* var\(--sp-3\)\) var\(--sp-3\); padding: var\(--sp-5\) calc\(var\(--sp-4\) \+ var\(--sp-3\)\)/);
   assert.match(css, /\.icon-button \{ min-height: 36px; width: 36px;[\s\S]*color: var\(--gray-600\)/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.icon-button \{ width: 44px; \}/);
