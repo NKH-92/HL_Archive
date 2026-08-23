@@ -56,7 +56,7 @@ export function documentImportJobCreatePage({ session, error = "", preview = [],
           <p class="muted">파일과 붙여넣기 내용을 모두 입력하면 CSV 파일을 우선 사용합니다.</p>
           <button type="submit" class="primary">검증하고 생성 예정값 보기</button>
         </form>
-        <p class="muted">필수 열: documentNumber, revisionNumber, documentName, category, rackCode, rackColumn, shelfNumber, rackFace.</p>
+        <p class="muted">필수 열: documentNumber, revisionNumber, documentName, category, rackCode, rackColumn, shelfNumber, rackFace. 랙 위치는 면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반입니다.</p>
       `}
     </section>
   `, session);

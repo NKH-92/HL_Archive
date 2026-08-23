@@ -79,7 +79,7 @@ export function documentFormPage({
             <select id="field-rackFace" name="rackFace" required data-rack-face ${errorAttrs("rackFace", normalizedValidation)}>${option("A", "1면", formValue(values, "rackFace", "rack_face") || "A")}${option("B", "2면", formValue(values, "rackFace", "rack_face"))}</select>
           </label>
           ${fieldError("rackFace", normalizedValidation)}
-          <p class="muted" data-face-hint>양면 랙은 13-1(1면)/13-2(2면)처럼 면 단위로 표기합니다. 단면 랙은 면 구분이 없습니다.</p>
+          <p class="muted" data-face-hint>양면 랙은 13-1(1면)/13-2(2면)처럼 면 단위로 표기합니다. 모든 면은 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반입니다.</p>
           <div class="location-selection-preview" data-location-selection aria-live="polite">
             <div><span>선택 위치</span><strong data-location-selection-label>위치를 선택하세요.</strong></div>
             <div><span>활성 문서</span><strong data-location-selection-count>-</strong></div>

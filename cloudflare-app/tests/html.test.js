@@ -225,6 +225,7 @@ test("document form groups metadata, previews values, and progressively enhances
   assert.match(html, /wrap\('선반'/);
   assert.match(html, /field-locationZone/);
   assert.match(html, /field-locationFace/);
+  assert.match(html, /모든 면은 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반/);
   assert.match(html, /data-tag-search/);
   assert.match(html, /data-form-completion/);
   assert.match(html, /data-location-selection-count/);
@@ -619,6 +620,8 @@ test("floor plan page keeps the map separate from search and opens rack results 
   assert.match(main, /<dt>설명<\/dt><dd data-rack-inspector-description>설명 없음<\/dd>/);
   assert.match(main, /data-rack-inspector-description[^\n]+data-rack-description/);
   assert.match(main, /1면 · 0열 · 0단|data-rack-inspector-structure/);
+  assert.match(main, /각 면을 바라본 기준 = 왼쪽 1열 · 아래 1선반/);
+  assert.doesNotMatch(main, /각 면의 1열 = 통로 안쪽|1열 오른쪽 시작/);
   assert.match(main, /href="\/app\?rack=3&amp;status=active&amp;sort=location"/);
   assert.doesNotMatch(main, /<a[^>]*data-rack-inspector-edit/);
   assert.doesNotMatch(main, /href="\/app\?q=1-03/);
@@ -913,12 +916,25 @@ test("document details page keeps core information and permission-scoped actions
   assert.match(coreAdminMain, /class="mini-rack-grid"/);
   assert.match(coreAdminMain, /class="mini-rack-scroll"[^>]*data-rack-scroll/);
   assert.match(coreAdminMain, /class="mini-slot active" title="2열 3선반"/);
+  assert.match(coreAdminMain, /왼쪽에서 2번째 열/);
+  assert.match(coreAdminMain, /1열 · 왼쪽[\s\S]*7열 · 오른쪽/);
+  assert.doesNotMatch(coreAdminMain, /통로 안쪽|바깥쪽|오른쪽이 1열/);
   assert.ok(coreAdminMain.indexOf("document-location-hero") < coreAdminMain.indexOf("기본 정보"));
   assert.ok(coreAdminMain.indexOf("document-location-visuals") < coreAdminMain.indexOf("document-detail-sections"));
   const detailFloorPlan = coreAdminMain.match(/<section class="panel doc-floor-plan"[\s\S]*?<\/section>/)?.[0] || "";
   assert.doesNotMatch(detailFloorPlan, /href="\/documents\?rack=/);
   assert.doesNotMatch(coreAdminMain, /<details class="panel doc-floor-plan"|위치 복사|같은 랙 문서 보기/);
   assert.doesNotMatch(coreAdminMain, /ARC-000007|완전 삭제|세트에 추가|>QR</);
+
+  const faceBHtml = await documentDetailsPage({
+    session,
+    document: { ...baseDocument, rack_face: "B" },
+    ...coreEmptyLogs
+  }).text();
+  const faceBMain = faceBHtml.match(/<main[^>]*>([\s\S]*?)<\/main>/)?.[1] || "";
+  assert.match(faceBMain, /2면을 바라본 기준으로 왼쪽이 1열/);
+  assert.match(faceBMain, /왼쪽에서 2번째 열/);
+  assert.ok(faceBMain.indexOf('title="1열 6선반"') < faceBMain.indexOf('title="7열 6선반"'));
 
   const coreDisposedHtml = await documentDetailsPage({
     session,

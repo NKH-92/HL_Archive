@@ -77,7 +77,7 @@ src/shared/                  업무 의미가 없는 text, CSV, pagination, coer
    UPDATE/DELETE보다 먼저 오고, 마지막 mutation guard가 no-op과 경합을 검출해야 한다.
 6. **낙관적 잠금**: 문서 수정·이동은 `updated_at`과 단조 증가 `row_version`을 함께 검사한다. 대분류·태그·랙·문서 세트의 수정·상태 변경·구성 변경도 화면에서 받은 `expectedRowVersion`과 DB `row_version`이 일치할 때만 수행한다.
 7. **랙 규칙**: 한 면은 7열 × 6선반, 저장 face는 A/B, 표시는 단면 `13`, 양면 `13-1`/`13-2`다.
-   열 mirror는 화면 순서만 바꾸며 DB `column_number`는 바꾸지 않는다.
+   랙과 면에 관계없이 해당 면을 바라본 사용자 기준으로 왼쪽부터 1열, 아래부터 1선반이며 화면에서 열을 mirror하지 않는다.
 8. **내부 식별자 비노출**: `storage_code`와 `ARC-*`는 검색, CSV, 공개 read model에 노출하지 않는다.
 9. **장기 작업 재개성**: disposal/import는 claim token과 terminal 상태를 보존하고 재호출이 중복
    mutation을 만들지 않아야 한다.

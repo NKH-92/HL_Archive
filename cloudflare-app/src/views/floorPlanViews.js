@@ -16,8 +16,6 @@ function floorRackMarkup(rack, {
   layoutKey = ""
 } = {}) {
   const classes = ["floor-rack", rack.isSingleSided ? "is-single" : "is-double"];
-  const isZoneOneRightSingle = rack.isSingleSided && Number(zoneNumber) === 1 && Number(rack.rackNumber) === 1;
-  if (isZoneOneRightSingle) classes.push("column-origin-right");
   if (hit) classes.push("is-hit");
   const faceAttr = !rack.isSingleSided && hitFace ? ` data-face-hit="${escapeHtml(hitFace)}"` : "";
   const faces = rack.isSingleSided
@@ -27,8 +25,8 @@ function floorRackMarkup(rack, {
     ? `${rack.rackNumber}-${hitFace === "B" ? 2 : 1}`
     : String(rack.rackNumber);
   const title = rack.isSingleSided
-    ? `${rack.code} · 단면${isZoneOneRightSingle ? " · 우측 랙 방향 · 1열 오른쪽 시작" : ""}`
-    : `${rack.code} · 양면 (좌 ${rack.rackNumber}-1: 1열 왼쪽 시작 / 우 ${rack.rackNumber}-2: 1열 오른쪽 시작)`;
+    ? `${rack.code} · 단면 · 면을 바라본 기준 왼쪽 1열`
+    : `${rack.code} · 양면 (좌 ${rack.rackNumber}-1 / 우 ${rack.rackNumber}-2) · 각 면을 바라본 기준 왼쪽 1열`;
   const active = hit || Boolean(hitFace);
   const content = `${faces}${active ? `<span class="rack-hit-pin" aria-hidden="true">현재</span>` : ""}<span class="rack-num">${escapeHtml(badgeLabel)}</span>`;
   const common = `class="${classes.join(" ")}"${faceAttr} data-floor-layout="${layoutKey}" data-rack-select data-rack-id="${Number(rack.id)}" data-rack-code="${escapeHtml(rack.code)}" data-rack-description="${escapeHtml(rack.description || "")}" data-rack-type="${rack.isSingleSided ? "단면" : "양면"}" data-rack-faces="${rack.isSingleSided ? 1 : 2}" data-rack-columns="${Number(rack.columnCount || 0)}" data-rack-shelves="${Number(rack.shelfCount || 0)}" data-rack-documents="${Number(rack.documentCount || 0)}" data-zone="${escapeHtml(String(zoneNumber))}" title="${escapeHtml(title)}"`;
@@ -77,7 +75,8 @@ export function floorPlanView(regions, hits = new Set()) {
         ${activeRackCount ? `<span>일치 랙 ${activeRackCount}개</span>` : ""}
         <span><i class="legend-box"></i>양면 랙</span>
         <span><i class="legend-box single"></i>단면 랙</span>
-        ${regions.some((region) => region.zoneNumber === 1) ? `<span>1구역 위쪽 = 벽면</span><span>각 면의 1열 = 통로 안쪽</span>` : ""}
+        ${regions.some((region) => region.zoneNumber === 1) ? `<span>1구역 위쪽 = 벽면</span>` : ""}
+        <span>각 면을 바라본 기준 = 왼쪽 1열 · 아래 1선반</span>
         ${activeRackCount ? `<span><i class="legend-box hit"></i>검색 위치</span>` : ""}
       </div>
       <div class="zone-list">
