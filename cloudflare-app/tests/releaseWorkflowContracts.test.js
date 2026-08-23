@@ -90,8 +90,10 @@ test("free-tier production deploy는 복구 지점, migration, 직접 배포, sm
   assert.match(deploy, /\.annotations\["workers\/tag"\] == \$tag and \.annotations\["workers\/message"\] == \$message/);
   assert.match(deploy, /SMOKE_EXPECTED_WORKER_VERSION="\$DEPLOYED_VERSION_ID"/);
   assert.match(deploy, /Post-deploy transport, login and read-only search smoke[\s\S]*SMOKE_HEALTH_ATTEMPTS: "60"[\s\S]*SMOKE_HEALTH_RETRY_MS: "2000"/);
+  assert.match(deploy, /Post-deploy transport, login and read-only search smoke[\s\S]*SMOKE_ASSET_ATTEMPTS: "30"[\s\S]*SMOKE_ASSET_RETRY_MS: "2000"/);
   assert.match(deploy, /Post-deploy transport, login and read-only search smoke[\s\S]*SMOKE_VERIFY_PUBLIC_SURFACE: "1"/);
   assert.match(smokeRelease, /verifyPublicSurface: process\.env\.SMOKE_VERIFY_PUBLIC_SURFACE === "1"/);
+  assert.match(smokeRelease, /assetAttempts: process\.env\.SMOKE_ASSET_ATTEMPTS/);
   assert.doesNotMatch(smokeRelease, /verifyPublicSurface: true/);
   assert.doesNotMatch(deploy, /versions list --json > release-evidence\/versions-before\.json/);
   assert.doesNotMatch(deploy, /123456|SESSION_SECRET/);

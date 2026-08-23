@@ -93,6 +93,7 @@ test("운영 공개면 smoke는 HTTPS 전환과 asset MIME·ETag 재검증을 �
   ]);
   const result = await verifyReleasePublicSurface({
     target,
+    readExpectedAsset: async () => "asset",
     fetchImpl: async (input, init = {}) => {
       const url = new URL(input);
       calls.push({ url: url.toString(), init });
@@ -107,7 +108,8 @@ test("운영 공개면 smoke는 HTTPS 전환과 asset MIME·ETag 재검증을 �
           status: 200,
           headers: {
             "Content-Type": contentTypes.get(url.pathname),
-            ETag: '"asset-etag"'
+            ETag: '"asset-etag"',
+            ...assetSecurityHeaders()
           }
         });
       }
@@ -136,6 +138,77 @@ test("운영 공개면 smoke는 HTTPS 전환과 asset MIME·ETag 재검증을 �
     "/images/hanlim-pharm-logo.svg": 200
   });
   assert.equal(calls.length, 9);
+});
+
+test("정적 asset smoke는 배포 전파 중 ETag 변경을 bounded retry하고 릴리스 바이트를 확인한다", async () => {
+  const target = resolveSmokeTarget("https://archive.example", { allowedHosts: ["archive.example"] });
+  const contentTypes = new Map([
+    ["/assets/app.css", "text/css; charset=utf-8"],
+    ["/assets/app.js", "text/javascript; charset=utf-8"],
+    ["/assets/excel-app.js", "text/javascript; charset=utf-8"],
+    ["/images/hanlim-pharm-logo.svg", "image/svg+xml"]
+  ]);
+  const plainAttempts = new Map();
+  let waitCount = 0;
+  const result = await verifyReleasePublicSurface({
+    target,
+    assetAttempts: 2,
+    assetRetryMs: 1,
+    readExpectedAsset: async () => "release-asset",
+    waitImpl: async () => { waitCount += 1; },
+    fetchImpl: async (input, init = {}) => {
+      const url = new URL(input);
+      if (url.protocol === "http:") {
+        return new Response(null, { status: 308, headers: { Location: "https://archive.example/login" } });
+      }
+      const ifNoneMatch = new Headers(init.headers).get("If-None-Match");
+      if (ifNoneMatch === '"edge-b"' || (ifNoneMatch === '"stable"' && url.pathname !== "/assets/excel-app.js")) {
+        return new Response(null, { status: 304 });
+      }
+      if (ifNoneMatch === '"edge-a"') {
+        return new Response("release-asset", {
+          status: 200,
+          headers: { "Content-Type": contentTypes.get(url.pathname), ETag: '"edge-b"', ...assetSecurityHeaders() }
+        });
+      }
+      const nextAttempt = (plainAttempts.get(url.pathname) || 0) + 1;
+      plainAttempts.set(url.pathname, nextAttempt);
+      const etag = url.pathname === "/assets/excel-app.js"
+        ? (nextAttempt === 1 ? '"edge-a"' : '"edge-b"')
+        : '"stable"';
+      return new Response("release-asset", {
+        status: 200,
+        headers: { "Content-Type": contentTypes.get(url.pathname), ETag: etag, ...assetSecurityHeaders() }
+      });
+    }
+  });
+
+  assert.equal(waitCount, 1);
+  assert.equal(plainAttempts.get("/assets/excel-app.js"), 2);
+  assert.equal(result.assets["/assets/excel-app.js"], 200);
+});
+
+test("정적 asset smoke는 재시도 뒤에도 릴리스 바이트와 다르면 실패한다", async () => {
+  const target = resolveSmokeTarget("https://archive.example", { allowedHosts: ["archive.example"] });
+  let waitCount = 0;
+  await assert.rejects(verifyReleasePublicSurface({
+    target,
+    assetAttempts: 2,
+    assetRetryMs: 1,
+    readExpectedAsset: async () => "release-asset",
+    waitImpl: async () => { waitCount += 1; },
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      if (url.protocol === "http:") {
+        return new Response(null, { status: 308, headers: { Location: "https://archive.example/login" } });
+      }
+      return new Response("stale-asset", {
+        status: 200,
+        headers: { "Content-Type": "text/css", ETag: '"stale"', ...assetSecurityHeaders() }
+      });
+    }
+  }), /정적 asset 내용 smoke 실패.*attempts=2/);
+  assert.equal(waitCount, 1);
 });
 
 test("asset-only release smoke는 임시 계정 없이 공개면과 배포 version을 검증한다", async () => {
@@ -356,6 +429,19 @@ test("smoke 재시도 설정은 제한 범위를 벗어나면 네트워크 요�
     }
   }), /SMOKE_HEALTH_ATTEMPTS은 1 이상 120 이하/);
   assert.equal(fetchCount, 0);
+
+  await assert.rejects(runReleaseSmoke({
+    baseUrl: "https://archive.example",
+    username: "reader@example.com",
+    password: "reader-password",
+    assetAttempts: 61,
+    allowedHosts: ["archive.example"],
+    fetchImpl: async () => {
+      fetchCount += 1;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+  }), /SMOKE_ASSET_ATTEMPTS은 1 이상 60 이하/);
+  assert.equal(fetchCount, 0);
 });
 
 test("관리자 smoke는 제목만 있는 임의 200 응답을 관리 화면으로 인정하지 않는다", async () => {
@@ -381,3 +467,15 @@ test("관리자 smoke는 제목만 있는 임의 200 응답을 관리 화면으�
     waitImpl: async () => {}
   }), /관리자 설정 접근 smoke 실패/);
 });
+
+function assetSecurityHeaders() {
+  return {
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Referrer-Policy": "same-origin",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-Robots-Tag": "noindex, nofollow"
+  };
+}
