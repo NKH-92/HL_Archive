@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { loadDocumentFormOptions } from "../src/domains/documents/index.js";
@@ -18,6 +19,13 @@ import { sqliteD1 } from "./helpers/sqliteD1.js";
 function plan(database, sql) {
   return database.prepare(`EXPLAIN QUERY PLAN ${sql}`).all().map((row) => String(row.detail || "")).join("\n");
 }
+
+test("초기 적재 리허설은 현재 workbook schema 상수를 직접 사용한다", () => {
+  const source = readFileSync(new URL("../scripts/rehearse-initial-load.mjs", import.meta.url), "utf8");
+  assert.match(source, /EXCEL_SNAPSHOT_SCHEMA_VERSION/);
+  assert.match(source, /schemaVersion: EXCEL_SNAPSHOT_SCHEMA_VERSION/);
+  assert.doesNotMatch(source, /schemaVersion:\s*\d+/);
+});
 
 test("초기 적재 최종 schema는 documents index를 핵심 조회 패턴만 남긴다", async () => {
   const database = await createMigratedDatabase();

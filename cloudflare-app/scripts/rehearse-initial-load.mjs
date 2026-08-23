@@ -7,6 +7,7 @@ import { loadDocumentFormOptions } from "../src/domains/documents/index.js";
 import {
   applyDocumentSnapshot,
   createDocumentSnapshot,
+  EXCEL_SNAPSHOT_SCHEMA_VERSION,
   prepareDocumentSnapshot,
   runScheduledBootstrapApplication,
   stageDocumentSnapshotRows
@@ -43,7 +44,7 @@ try {
     sourceHash: "a".repeat(64),
     sourceSize: Math.min(FREE_TIER_BUDGET.excelSnapshotMaxFileBytes, Math.max(4096, count * 256)),
     totalCount: count,
-    schemaVersion: 3,
+    schemaVersion: EXCEL_SNAPSHOT_SCHEMA_VERSION,
     mode: "bootstrap",
     hasRowKeys: false,
     syncReason: `${count.toLocaleString("ko-KR")}건 실사용 전 초기 적재 리허설`,

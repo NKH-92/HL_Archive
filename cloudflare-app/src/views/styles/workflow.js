@@ -1,8 +1,9 @@
 // 전역 CSS의 업무 흐름과 상세 화면 조각. 순서는 styles.js에서 고정한다.
 
 export function workflowStyles() {
-  return `    .bulk-bar { position: sticky; bottom: var(--sp-4); z-index: 20; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); background: var(--gray-900); color: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-2); font-size: 13px; }
+  return `    .bulk-bar { position: fixed; inset: auto var(--sp-4) var(--sp-4); z-index: 40; display: flex; align-items: center; gap: var(--sp-3); max-height: min(50vh, 360px); overflow-y: auto; padding: var(--sp-2) var(--sp-3); background: var(--gray-900); color: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-2); font-size: 13px; }
     .bulk-bar[hidden] { display: none; }
+    .app-shell:has(.bulk-bar:not([hidden])) { padding-bottom: calc(var(--sp-8) + 80px); }
     .bulk-limit-notice { color: var(--action); font-weight: 600; }
     .bulk-limit-notice[hidden] { display: none; }
     .bulk-bar form { display: flex; flex: 1; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
