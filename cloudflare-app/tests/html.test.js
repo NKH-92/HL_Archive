@@ -68,6 +68,12 @@ test("disposal workspace renders target/history tabs and a review-first disposal
   assert.match(html, /<span>폐기 예정 연도<\/span>/);
   assert.match(html, /<span>대분류<\/span>/);
   assert.match(html, /<span>보관 위치<\/span>/);
+  assert.match(html, /data-filter-toggle aria-controls="disposal-target-filters" aria-expanded="false"/);
+  assert.match(html, /id="disposal-target-filters"[^>]*data-collapsible-filters data-active="false"/);
+  assert.match(html, /aria-label="적용된 폐기 대상 필터"/);
+  assert.match(html, />2031년 <span aria-hidden="true">×<\/span>/);
+  assert.match(html, />대분류: PV <span aria-hidden="true">×<\/span>/);
+  assert.match(html, />1구역 3번 랙 <span aria-hidden="true">×<\/span>/);
   assert.match(html, /data-bulk-select-all/);
   assert.match(html, /class="doc-table is-bulk-selectable"/);
   assert.match(html, /bulk-select-all-text">현재 목록 전체 선택<\/span>/);
@@ -157,14 +163,24 @@ test("copy controls use delegated events for dynamically rendered search results
   assert.match(APP_SCRIPT, /button\.textContent = '복사됨'/);
 });
 
-test("Q&A renders optional support settings without a hard-coded address", async () => {
+test("도움말은 권한별 작업 바로가기와 선택적 문의 정보를 제공한다", async () => {
   const session = { username: "user", displayName: "사용자", role: "User", csrfToken: "csrf" };
   const configured = await qaPage({
     session,
     support: { department: "SQA팀", name: "남광현", email: "archive@example.com" }
   }).text();
   const unconfigured = await qaPage({ session, support: {} }).text();
+  const adminHelp = await qaPage({ session: { ...session, role: "Admin" }, support: {} }).text();
 
+  assert.match(configured, /<h1>도움말·문의<\/h1>/);
+  assert.match(configured, /aria-label="주요 작업 바로가기"/);
+  assert.match(configured, /href="\/app"[^>]*>[\s\S]*?문서 찾기/);
+  assert.match(configured, /href="\/floor-plan"[^>]*>[\s\S]*?보관 위치 확인/);
+  assert.doesNotMatch(configured, /href="\/documents\/(?:new|import|disposal)"|href="\/admin"/);
+  assert.match(adminHelp, /href="\/documents\/new"[^>]*>[\s\S]*?문서 등록/);
+  assert.match(adminHelp, /href="\/documents\/import"[^>]*>[\s\S]*?엑셀 대장 동기화/);
+  assert.match(adminHelp, /href="\/documents\/disposal"[^>]*>[\s\S]*?문서 폐기/);
+  assert.match(adminHelp, /href="\/admin"[^>]*>[\s\S]*?확인할 일/);
   assert.match(configured, /SQA팀 \/ 남광현/);
   assert.match(configured, /mailto:archive@example\.com/);
   assert.doesNotMatch(unconfigured, /mailto:/);
@@ -217,6 +233,8 @@ test("document form groups metadata, previews values, and progressively enhances
   assert.match(html, /<legend>보존 정보<\/legend>/);
   assert.match(html, /<legend>보관 위치<\/legend>/);
   assert.match(html, /data-form-review/);
+  assert.doesNotMatch(html, /<details class="panel form-review"[^>]*\sopen(?:\s|>)/);
+  assert.match(html, /formReview\.open = !window\.matchMedia\('\(max-width: 760px\)'\)\.matches/);
   assert.match(html, /location-picker-steps/);
   assert.match(html, /wrap\('구역'/);
   assert.match(html, /wrap\('랙'/);
@@ -613,6 +631,9 @@ test("floor plan page keeps the map separate from search and opens rack results 
   assert.match(main, /<h1>문서고 도면<\/h1>/);
   assert.match(main, /src="\/images\/Archive\.png"/);
   assert.match(main, /data-rack-code="1-03"/);
+  assert.match(main, /class="mobile-floor-plan-note"/);
+  assert.match(main, /<details open><summary>/);
+  assert.match(main, /랙 목록에서 충분히 큰 항목으로 랙을 선택/);
   assert.match(main, /data-floor-rack-search/);
   assert.match(main, /data-floor-plan-fit/);
   assert.match(main, /data-rack-inspector/);
@@ -625,6 +646,7 @@ test("floor plan page keeps the map separate from search and opens rack results 
   assert.match(main, /href="\/app\?rack=3&amp;status=active&amp;sort=location"/);
   assert.doesNotMatch(main, /<a[^>]*data-rack-inspector-edit/);
   assert.doesNotMatch(main, /href="\/app\?q=1-03/);
+  assert.match(main, /mobileRackList[\s\S]*setAttribute\('tabindex', '-1'\)[\s\S]*setAttribute\('aria-hidden', 'true'\)/);
 
   const adminHtml = await floorPlanPage({
     session: { username: "admin", displayName: "관리자", role: "Admin", csrfToken: "csrf-token-123" },
@@ -642,13 +664,14 @@ test("admin navigation exposes permission-scoped work routes", async () => {
 
   const nav = html.match(/<nav[^>]*aria-label="주 메뉴"[\s\S]*?<\/nav>/)?.[0] || "";
   const commands = html.match(/<dialog class="command-palette"[\s\S]*?<\/dialog>/)?.[0] || "";
-  assert.match(nav, /aria-label="문서"/);
+  assert.match(nav, /class="nav-primary-links" role="group" aria-label="주요 문서 메뉴"/);
+  assert.doesNotMatch(nav, /<details class="nav-group" aria-label="문서"/);
   assert.match(nav, /aria-label="업무"/);
   assert.match(nav, /aria-label="운영"/);
-  for (const label of ["문서", "업무", "운영"]) {
-    assert.match(nav, new RegExp(`<details class="nav-group" aria-label="${label}"><summary class="nav-group-label">${label}<\\/summary>`));
+  for (const label of ["업무", "운영"]) {
+    assert.match(nav, new RegExp(`<details class="nav-group" aria-label="${label}" data-nav-group="${label}"><summary class="nav-group-label">${label}<\\/summary>`));
   }
-  assert.doesNotMatch(nav, /<details class="nav-group"[^>]*\sopen(?:\s|>)/, "대분류 메뉴는 기본으로 접힌다");
+  assert.doesNotMatch(nav, /<details class="nav-group"[^>]*\sopen(?:\s|>)/, "서버 마크업은 저장 상태를 추측하지 않는다");
   assert.match(APP_STYLES, /\.topbar nav \{[^}]*overflow-y: auto;[^}]*scrollbar-gutter: stable;/, "긴 메뉴는 내부에서 스크롤한다");
   assert.match(nav, /href="\/app"[^>]*>[\s\S]*?문서/);
   assert.match(nav, /href="\/floor-plan"[^>]*>[\s\S]*?보관 위치/);

@@ -33,11 +33,13 @@ export function baseStyles() {
     .archive-nav-item:hover, .nav-sub-link:hover, .logout-link:hover { background: var(--gray-100); color: var(--gray-900); }
     .archive-nav-item.active { background: var(--primary-soft); color: var(--primary); }
     .nav-group { display: block; }
+    .nav-primary-links { display: grid; gap: var(--sp-1); }
     .nav-group-label { display: flex; align-items: center; gap: var(--sp-2); min-height: 40px; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); color: var(--gray-500); font-size: 12px; font-weight: 800; cursor: pointer; list-style: none; }
     .nav-group-label::-webkit-details-marker { display: none; }
     .nav-group-label::after { content: "+"; margin-left: auto; color: var(--gray-400); font-size: 15px; line-height: 1; }
     .nav-group[open] > .nav-group-label::after { content: "−"; }
     .nav-group-label:hover { background: var(--gray-100); color: var(--gray-900); }
+    .nav-group.has-active > .nav-group-label { background: var(--primary-soft); color: var(--primary); }
     .nav-group-label:focus-visible, .nav-settings summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
     .nav-group-content { display: none; }
     .nav-group[open] > .nav-group-content { display: grid; gap: var(--sp-1); padding-top: var(--sp-1); }

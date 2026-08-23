@@ -16,11 +16,11 @@ export function workflowStyles() {
     .workspace-tabs a[aria-current="page"] { border-color: var(--primary); color: var(--primary); }
     .disposal-filter { grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(140px, auto)) auto auto; }
     .periodic-disposal-filter { grid-template-columns: repeat(2, minmax(180px, 1fr)) auto auto; align-items: end; }
-    .disposal-review-modal { width: min(560px, calc(100% - var(--sp-8))); }
+    .modal.disposal-review-modal { width: min(560px, calc(100vw - var(--sp-8))); }
     .disposal-count-confirmation { margin: 0; padding: var(--sp-4); border: 1px solid var(--danger); border-radius: var(--r-md); background: var(--danger-soft); text-align: center; }
     .disposal-count-confirmation strong { display: block; margin-top: var(--sp-1); color: var(--danger); font-size: 24px; line-height: 1.2; }
     .disposal-review-list { max-height: 220px; overflow-y: auto; margin: 0; padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-6); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--gray-50); }
-    .disposal-review-list li { padding: var(--sp-1) 0; font-size: 13px; }
+    .disposal-review-list li { min-width: 0; padding: var(--sp-1) 0; overflow-wrap: anywhere; font-size: 13px; }
     .disposal-safety-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-4); border-color: var(--danger); background: var(--danger-soft); }
     .disposal-safety-panel p { margin: var(--sp-1) 0 0; color: var(--gray-700); }
     /* 폐기 경고 배지는 좁은 폭에서도 줄바꿈 없이 한 덩어리로 읽혀야 한다. */
@@ -87,14 +87,24 @@ export function workflowStyles() {
     .manual-list li:last-child { border-bottom: 0; padding-bottom: 0; }
     .manual-list strong { font-size: 13.5px; }
     .manual-list span { color: var(--gray-500); font-size: 12.5px; }
+    .help-task-panel { display: grid; gap: var(--sp-4); }
+    .help-task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+    .help-task-card { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; min-width: 0; min-height: 72px; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--gray-800); text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .help-task-card > i:first-child { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--primary); }
+    .help-task-arrow { color: var(--gray-400); font-size: 20px; line-height: 1; }
+    .help-task-card strong, .help-task-card small { display: block; }
+    .help-task-card small { margin-top: var(--sp-1); color: var(--gray-500); font-size: 12px; line-height: 1.45; }
+    .help-task-card:hover { border-color: var(--primary); box-shadow: var(--shadow-1); transform: translateY(-1px); }
+    .help-task-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
     .contact-list { margin: 0; display: grid; gap: var(--sp-2); }
     .contact-list div { display: flex; justify-content: space-between; gap: var(--sp-3); }
     .contact-list dt { color: var(--gray-500); font-size: 12.5px; font-weight: 600; }
     .contact-list dd { margin: 0; font-size: 13px; font-weight: 600; }
 
-    .modal { border: 0; border-radius: var(--r-lg); padding: 0; width: min(440px, calc(100% - var(--sp-8))); box-shadow: var(--shadow-2); }
+    .modal { max-width: calc(100vw - var(--sp-8)); max-height: calc(100dvh - var(--sp-6)); overflow-x: clip; overflow-y: auto; border: 0; border-radius: var(--r-lg); padding: 0; width: min(440px, calc(100vw - var(--sp-8))); box-shadow: var(--shadow-2); }
     .modal::backdrop { background: var(--scrim); }
-    .modal-body { padding: var(--sp-5); display: grid; gap: var(--sp-4); }
+    .modal-body { min-width: 0; max-width: 100%; padding: var(--sp-5); display: grid; gap: var(--sp-4); }
+    .modal-body > * { min-width: 0; }
     .modal-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
     .command-palette { width: min(520px, calc(100% - var(--sp-8))); max-height: min(640px, calc(100vh - var(--sp-8))); padding: var(--sp-4); border: 0; border-radius: var(--r-lg); box-shadow: var(--shadow-2); }
     .command-palette::backdrop { background: var(--scrim); }

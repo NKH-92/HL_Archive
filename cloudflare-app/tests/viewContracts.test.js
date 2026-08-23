@@ -327,6 +327,7 @@ test("엑셀 대장 동기화 화면은 단일 엑셀 전체 동기화 흐름만
   assert.match(managerMain, /data-excel-stale-warning/);
   assert.match(managerMain, /aria-label="엑셀 대장 동기화 단계"/);
   assert.match(managerMain, /class="workflow-step is-current" aria-current="step"/);
+  assert.match(managerMain, /class="workflow-current-step">[\s\S]*현재 단계 1\/5[\s\S]*최신 대장 내보내기/);
   assert.match(managerMain, /최신 대장을 추출해 수정한 파일/);
   assert.match(managerMain, /개정 이력의 문서번호·개정번호 변경/);
   assert.match(managerMain, /랙과 면에 관계없이 해당 면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반/);

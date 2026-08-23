@@ -212,13 +212,14 @@ export function floorPlanPage({ session, floorPlan = [] }) {
     </section>
     <div class="floor-plan-layout">
       <section class="panel archive-floor-plan-page" aria-label="문서고 전체 도면">
+        <p class="mobile-floor-plan-note">랙 목록에서 충분히 큰 항목으로 랙을 선택하고, 아래 도면에서 실제 배치를 확인하세요.</p>
         ${floorPlan.length
           ? floorPlanView(floorPlan)
           : `<div class="empty-state"><i class="fa-regular fa-folder-open" aria-hidden="true"></i><p>표시할 랙 도면이 없습니다.</p></div>`}
       </section>
       ${zoneRows.length ? `<aside class="panel floor-plan-side" aria-labelledby="zone-overview-title">
         <div class="section-title"><h2 id="zone-overview-title">구역·랙 목록</h2><span class="count-badge">${rackCount}개 랙</span></div>
-        <div class="zone-overview">${floorPlan.map((region) => `<details><summary><span><strong>${escapeHtml(region.label)}</strong><small>${region.racks.reduce((sum, rack) => sum + Number(rack.documentCount || 0), 0).toLocaleString("ko-KR")}건</small></span><span>${region.racks.length}개 랙</span></summary><div class="zone-rack-links">${region.racks.map((rack) => `<a href="/app?rack=${Number(rack.id)}&amp;status=active&amp;sort=location" data-rack-select data-rack-id="${Number(rack.id)}" data-rack-code="${escapeHtml(rack.code)}" data-rack-description="${escapeHtml(rack.description || "")}" data-rack-type="${rack.isSingleSided ? "단면" : "양면"}" data-rack-faces="${rack.isSingleSided ? 1 : 2}" data-rack-columns="${Number(rack.columnCount || 0)}" data-rack-shelves="${Number(rack.shelfCount || 0)}" data-rack-documents="${Number(rack.documentCount || 0)}" data-zone="${Number(region.zoneNumber)}"><span class="mono">${escapeHtml(rack.code)}</span><span>${Number(rack.documentCount || 0).toLocaleString("ko-KR")}건</span></a>`).join("")}</div></details>`).join("")}</div>
+        <div class="zone-overview">${floorPlan.map((region, regionIndex) => `<details${regionIndex === 0 ? " open" : ""}><summary><span><strong>${escapeHtml(region.label)}</strong><small>${region.racks.reduce((sum, rack) => sum + Number(rack.documentCount || 0), 0).toLocaleString("ko-KR")}건</small></span><span>${region.racks.length}개 랙</span></summary><div class="zone-rack-links">${region.racks.map((rack) => `<a href="/app?rack=${Number(rack.id)}&amp;status=active&amp;sort=location" data-rack-select data-rack-id="${Number(rack.id)}" data-rack-code="${escapeHtml(rack.code)}" data-rack-description="${escapeHtml(rack.description || "")}" data-rack-type="${rack.isSingleSided ? "단면" : "양면"}" data-rack-faces="${rack.isSingleSided ? 1 : 2}" data-rack-columns="${Number(rack.columnCount || 0)}" data-rack-shelves="${Number(rack.shelfCount || 0)}" data-rack-documents="${Number(rack.documentCount || 0)}" data-zone="${Number(region.zoneNumber)}"><span class="mono">${escapeHtml(rack.code)}</span><span>${Number(rack.documentCount || 0).toLocaleString("ko-KR")}건</span></a>`).join("")}</div></details>`).join("")}</div>
         <section class="floor-rack-inspector" data-rack-inspector aria-live="polite" tabindex="-1">
           <button type="button" class="icon-button floor-rack-inspector-close" data-rack-inspector-close aria-label="랙 정보 닫기"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
           <p class="muted" data-rack-inspector-empty>도면이나 목록에서 랙을 선택하세요.</p>
@@ -245,6 +246,21 @@ export function floorPlanPage({ session, floorPlan = [] }) {
         var search = document.querySelector('[data-floor-rack-search]');
         var inspector = document.querySelector('[data-rack-inspector]');
         var lastRackTrigger = null;
+        var mobileRackList = window.matchMedia('(max-width: 760px)');
+        var mapRackLinks = Array.from(document.querySelectorAll('.floor-plan-media [data-rack-select]'));
+        var syncMapInteraction = function () {
+          mapRackLinks.forEach(function (link) {
+            if (mobileRackList.matches) {
+              link.setAttribute('tabindex', '-1');
+              link.setAttribute('aria-hidden', 'true');
+            } else {
+              link.removeAttribute('tabindex');
+              link.removeAttribute('aria-hidden');
+            }
+          });
+        };
+        syncMapInteraction();
+        mobileRackList.addEventListener?.('change', syncMapInteraction);
         var selectRack = function (link) {
           if (!inspector) return;
           lastRackTrigger = link;
