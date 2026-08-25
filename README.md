@@ -11,7 +11,7 @@
 - 기본 브랜치: `main`
 - 배포: GitHub Actions + `production` Environment 승인
 - 검색: Core D1 내부 FTS projection + dirty queue
-- 용량 정책: 11,000건 경고, 12,000건 하드 상한
+- 용량 정책: 27,000건 운영 경고, 30,000건 기술 상한. 월별 확인은 [운영 절차](./docs/OPERATIONS.md#12-월별-무료티어-운영-점검)를 따른다.
 
 ## 주요 업무
 

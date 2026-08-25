@@ -64,6 +64,14 @@ test("D1 recovery preflight binds the production Core database and release ident
   }).ok, false);
 });
 
+test("수동 복구 절차는 현재 production DB binding만 대상으로 한다", () => {
+  const runbook = readFileSync(new URL("../../docs/BACKUP_RESTORE.md", import.meta.url), "utf8");
+  assert.match(runbook, /wrangler d1 info DB --env production/);
+  assert.match(runbook, /wrangler d1 time-travel info DB --env production --json/);
+  assert.match(runbook, /wrangler d1 time-travel restore DB --env production --bookmark/);
+  assert.doesNotMatch(runbook, /wrangler d1 time-travel (?:info|restore) hanlim-archive\b/);
+});
+
 test("runtime-only recovery는 임시 smoke 계정이 쓰는 Core bookmark만 캡처한다", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "d1-core-recovery-test-"));
   try {
