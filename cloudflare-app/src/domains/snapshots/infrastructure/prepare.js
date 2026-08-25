@@ -111,14 +111,19 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
   }
 
   const documents = documentResult.results ?? [];
-  const preservedSlotsByRowKey = new Map();
+  const preservedLocationsByRowKey = new Map();
   const preservedSlotsById = new Map();
   for (const document of documents) {
     const slot = currentDocumentSlot(document);
     if (!slot) continue;
     preservedSlotsById.set(Number(slot.id), slot);
     const rowKey = clean(document.excel_row_key);
-    if (document.sync_state === "current" && rowKey) preservedSlotsByRowKey.set(rowKey, slot);
+    if (snapshot.mode !== "bootstrap" && document.sync_state === "current" && rowKey) {
+      preservedLocationsByRowKey.set(rowKey, {
+        slot,
+        rackFace: clean(document.rack_face)
+      });
+    }
   }
 
   const lookup = {
@@ -162,7 +167,7 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
 
   const prepared = prepareCanonicalSnapshotRows(sourceRows, {
     ...options,
-    preservedSlotsByRowKey
+    preservedLocationsByRowKey
   });
   if (!prepared.ok) {
     return failSnapshotValidation(

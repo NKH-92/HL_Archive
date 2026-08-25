@@ -151,6 +151,112 @@ test("다른 문서는 사용 중지된 현재 문서 위치로 이동할 수 �
   }
 });
 
+test("사용 중지된 양면 랙의 현재 문서는 면만 바꿀 수 없다", async () => {
+  const database = await createMigratedDatabase();
+  const env = { DB: sqliteD1(database) };
+  const actor = actorFixture();
+  try {
+    const exported = await getDocumentSnapshotExport(env, actor);
+    const inactive = exported.documents.find((document) => {
+      const row = database.prepare(`
+        SELECT rack.is_active AS rack_active, slot.is_active AS slot_active, rack.is_single_sided
+        FROM documents d
+        JOIN rack_slots slot ON slot.id = d.rack_slot_id
+        JOIN racks rack ON rack.id = slot.rack_id
+        WHERE d.excel_row_key = ?
+      `).get(document.rowKey);
+      return (Number(row?.rack_active) === 0 || Number(row?.slot_active) === 0) && Number(row?.is_single_sided) === 0;
+    });
+    assert.ok(inactive, "사용 중지된 양면 랙의 현재 문서가 필요하다");
+
+    const rows = exported.documents.map((document, index) => ({
+      rowNumber: index + 2,
+      sourceRowKey: document.rowKey,
+      source: document.rowKey === inactive.rowKey ? {
+        ...document,
+        rackFace: document.rackFace === "1면" ? "2면" : "1면"
+      } : document
+    }));
+    const created = await createDocumentSnapshot(env, {
+      sourceName: "inactive-rack-face-change.xlsx",
+      sourceHash: "5".repeat(64),
+      sourceSize: 4096,
+      syncReason: "사용 중지 위치 면 변경 차단 검증",
+      totalCount: rows.length,
+      schemaVersion: exported.schemaVersion,
+      mode: "managed",
+      baseVersion: exported.baseVersion,
+      currentSnapshotId: exported.currentSnapshotId || "",
+      exportManifestId: exported.exportManifestId,
+      canonicalExportHash: exported.canonicalExportHash,
+      hasRowKeys: true
+    }, actor);
+    assert.equal(created.ok, true, created.message);
+    assert.equal((await stageDocumentSnapshotRows(env, created.id, rows)).ok, true);
+    const prepared = await prepareDocumentSnapshot(
+      env,
+      created.id,
+      await loadDocumentFormOptions(env, { activeOnly: true }),
+      null,
+      actor
+    );
+    assert.equal(prepared.ok, false);
+    assert.ok(prepared.errors.some((error) => error.field === "location"));
+  } finally {
+    database.close();
+  }
+});
+
+test("bootstrap seed 관리 ID는 사용 중지 위치 예외를 얻지 않는다", async () => {
+  const database = await createMigratedDatabase();
+  const env = { DB: sqliteD1(database) };
+  const actor = actorFixture();
+  try {
+    const exported = await getDocumentSnapshotExport(env, actor);
+    const inactive = exported.documents.find((document) => {
+      const row = database.prepare(`
+        SELECT rack.is_active AS rack_active, slot.is_active AS slot_active
+        FROM documents d
+        JOIN rack_slots slot ON slot.id = d.rack_slot_id
+        JOIN racks rack ON rack.id = slot.rack_id
+        WHERE d.excel_row_key = ?
+      `).get(document.rowKey);
+      return Number(row?.rack_active) === 0 || Number(row?.slot_active) === 0;
+    });
+    assert.ok(inactive, "사용 중지 위치의 bootstrap seed가 필요하다");
+
+    const created = await createDocumentSnapshot(env, {
+      sourceName: "bootstrap-inactive-seed.xlsx",
+      sourceHash: "4".repeat(64),
+      sourceSize: 4096,
+      syncReason: "bootstrap seed 위치 예외 차단 검증",
+      totalCount: 1,
+      schemaVersion: exported.schemaVersion,
+      mode: "bootstrap",
+      hasRowKeys: true,
+      bootstrapConfirmation: "BOOTSTRAP",
+      backupConfirmed: true
+    }, actor);
+    assert.equal(created.ok, true, created.message);
+    assert.equal((await stageDocumentSnapshotRows(env, created.id, [{
+      rowNumber: 2,
+      sourceRowKey: inactive.rowKey,
+      source: inactive
+    }])).ok, true);
+    const prepared = await prepareDocumentSnapshot(
+      env,
+      created.id,
+      await loadDocumentFormOptions(env, { activeOnly: true }),
+      null,
+      actor
+    );
+    assert.equal(prepared.ok, false);
+    assert.ok(prepared.errors.some((error) => error.field === "location"));
+  } finally {
+    database.close();
+  }
+});
+
 async function buildWorkbook(payload) {
   const workbook = new ExcelJS.Workbook();
   const data = workbook.addWorksheet("문서데이터");
