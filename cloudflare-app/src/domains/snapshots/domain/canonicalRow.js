@@ -21,6 +21,10 @@ function normalizedRackCode(zoneNumber, rackNumber) {
   return `${zoneNumber}-${String(rackNumber).padStart(2, "0")}`;
 }
 
+function slotPositionKey(slot) {
+  return `${slot.code}|${slot.column_number}|${slot.shelf_number}`;
+}
+
 function parseStrictInteger(raw, { allowLeadingZero = true } = {}) {
   const text = clean(raw);
   if (!text) return { ok: false };
@@ -65,10 +69,10 @@ function parseTagNames(raw) {
 /**
  * 전체 대장 전용 엄격 parser. CSV 가져오기와 달리 공란·오타를 기본값으로 보정하지 않는다.
  */
-export function prepareCanonicalSnapshotRows(rows, { categories, tags, slots }) {
+export function prepareCanonicalSnapshotRows(rows, { categories, tags, slots, preservedLocationsByRowKey }) {
   const categoryByName = new Map(categories.map((category) => [category.name.toLowerCase(), category]));
   const tagByName = new Map(tags.map((tag) => [tag.name.toLowerCase(), tag]));
-  const slotByPosition = new Map(slots.map((slot) => [`${slot.code}|${slot.column_number}|${slot.shelf_number}`, slot]));
+  const slotByPosition = new Map(slots.map((slot) => [slotPositionKey(slot), slot]));
   const errors = [];
   const items = [];
 
@@ -90,9 +94,22 @@ export function prepareCanonicalSnapshotRows(rows, { categories, tags, slots }) 
     const statusParsed = normalizeStrictStatus(row.status);
     const faceParsed = normalizeStrictFace(row.rackFace);
     const category = categoryByName.get(categoryName.toLowerCase());
-    const slot = columnParsed.ok && shelfParsed.ok
-      ? slotByPosition.get(`${rackCode}|${columnParsed.value}|${shelfParsed.value}`)
-      : null;
+    const positionKey = columnParsed.ok && shelfParsed.ok
+      ? `${rackCode}|${columnParsed.value}|${shelfParsed.value}`
+      : "";
+    const activeSlot = positionKey ? slotByPosition.get(positionKey) : null;
+    const preservedLocation = sourceRowKey ? preservedLocationsByRowKey?.get(sourceRowKey) : null;
+    const preservedSlot = preservedLocation?.slot;
+    // 사용 중지된 랙은 일반 선택지에 다시 노출하지 않는다. 다만 현재 문서가 이미 그 위치에
+    // 있다면 같은 관리 ID·같은 좌표인 행에 한해서 무수정 왕복과 메타데이터 수정을 허용한다.
+    const slot = activeSlot || (
+      preservedSlot &&
+      positionKey === slotPositionKey(preservedSlot) &&
+      faceParsed.ok &&
+      faceParsed.value === clean(preservedLocation.rackFace)
+        ? preservedSlot
+        : null
+    );
     const tagNames = parseTagNames(row.tags);
     const tagIds = [];
     const tagLabels = [];

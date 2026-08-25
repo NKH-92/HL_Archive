@@ -146,6 +146,13 @@ test("30,000건 운영 정책은 27,000 경고와 자동 분할 경계를 고정
   assert.equal(FREE_TIER_BUDGET.initialLoadDailyRowsWrittenStop, 95000);
 });
 
+test("README 용량 안내는 코드 상한과 월별 운영 점검을 따른다", () => {
+  const readme = readFileSync(new URL("../../README.md", import.meta.url), "utf8");
+  assert.match(readme, /27,000건 운영 경고, 30,000건 기술 상한/);
+  assert.match(readme, /OPERATIONS\.md#12-월별-무료티어-운영-점검/);
+  assert.doesNotMatch(readme, /11,000건 경고|12,000건 하드 상한/);
+});
+
 test("용량 trigger는 하드 상한의 다음 current 문서를 원자 차단한다", async () => {
   const database = await createMigratedDatabase();
   try {

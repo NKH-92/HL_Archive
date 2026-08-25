@@ -8,6 +8,7 @@ import {
   EXCEL_SNAPSHOT_HEADERS,
   getDocumentSnapshotExport,
   prepareDocumentSnapshot,
+  stageDocumentSnapshotMembership,
   stageDocumentSnapshotRows,
   utcDateToDateOnly
 } from "../src/domains/snapshots/index.js";
@@ -24,47 +25,22 @@ test("서버 export를 실제 XLSX로 생성·재파싱한 무수정 파일은 0
     database.prepare(`
       UPDATE documents
       SET revision_date = COALESCE(revision_date, '2026-07-20'),
-          disposal_due_year = COALESCE(disposal_due_year, 2031),
-          rack_slot_id = (
-            SELECT slot.id
-            FROM rack_slots slot
-            JOIN racks rack ON rack.id = slot.rack_id AND rack.is_active = 1
-            ORDER BY rack.rack_number, slot.column_number, slot.shelf_number
-            LIMIT 1
-          )
+          disposal_due_year = COALESCE(disposal_due_year, 2031)
     `).run();
     database.prepare("UPDATE documents SET revision_date = '2026' WHERE id = (SELECT MIN(id) FROM documents)").run();
-    database.prepare("UPDATE racks SET is_active = 1 WHERE zone_number IN (2, 3) AND rack_number = 1").run();
-    database.prepare(`
-      UPDATE rack_slots
-      SET is_active = 1
-      WHERE rack_id IN (SELECT id FROM racks WHERE zone_number IN (2, 3) AND rack_number = 1)
-    `).run();
-    database.prepare(`
-      UPDATE documents
-      SET rack_slot_id = (
-        SELECT slot.id FROM rack_slots slot
-        JOIN racks rack ON rack.id = slot.rack_id
-        WHERE rack.zone_number = 2 AND rack.is_active = 1
-        ORDER BY rack.rack_number, slot.column_number, slot.shelf_number
-        LIMIT 1
-      )
-      WHERE id = (SELECT MIN(id) FROM documents)
-    `).run();
-    database.prepare(`
-      UPDATE documents
-      SET rack_slot_id = (
-        SELECT slot.id FROM rack_slots slot
-        JOIN racks rack ON rack.id = slot.rack_id
-        WHERE rack.zone_number = 3 AND rack.is_active = 1
-        ORDER BY rack.rack_number, slot.column_number, slot.shelf_number
-        LIMIT 1
-      )
-      WHERE id = (SELECT MAX(id) FROM documents)
-    `).run();
+    const inactiveDocument = database.prepare(`
+      SELECT d.excel_row_key
+      FROM documents d
+      JOIN rack_slots slot ON slot.id = d.rack_slot_id
+      JOIN racks rack ON rack.id = slot.rack_id
+      WHERE d.sync_state = 'current'
+        AND (rack.is_active = 0 OR slot.is_active = 0)
+      LIMIT 1
+    `).get();
+    assert.ok(inactiveDocument?.excel_row_key, "fixture에 사용 중지된 현재 문서 위치가 있어야 한다");
     const exported = await getDocumentSnapshotExport(env, actor);
     assert.ok(exported.documents.some((document) => document.revisionDate === "2026"));
-    assert.deepEqual(exported.documents.map((document) => document.zoneNumber), [2, 3]);
+    assert.ok(exported.documents.some((document) => document.rowKey === inactiveDocument.excel_row_key));
     const workbookBytes = await buildWorkbook(exported);
     const rows = await parseWorkbook(workbookBytes);
     const digest = await crypto.subtle.digest("SHA-256", workbookBytes);
@@ -84,8 +60,15 @@ test("서버 export를 실제 XLSX로 생성·재파싱한 무수정 파일은 0
       hasRowKeys: true
     }, actor);
     assert.equal(created.ok, true, created.message);
-    for (let index = 0; index < rows.length; index += FREE_TIER_BUDGET.excelSnapshotStageChunkSize) {
-      const staged = await stageDocumentSnapshotRows(env, created.id, rows.slice(index, index + FREE_TIER_BUDGET.excelSnapshotStageChunkSize));
+    const exportByKey = new Map(exported.documents.map((document) => [document.rowKey, document]));
+    for (let index = 0; index < rows.length; index += FREE_TIER_BUDGET.excelSnapshotMembershipChunkSize) {
+      const membership = rows.slice(index, index + FREE_TIER_BUDGET.excelSnapshotMembershipChunkSize).map((row) => ({
+        rowNumber: row.rowNumber,
+        rowKey: row.sourceRowKey,
+        baseRowVersion: exportByKey.get(row.sourceRowKey)?.baseRowVersion || "",
+        baseHash: ""
+      }));
+      const staged = await stageDocumentSnapshotMembership(env, created.id, membership);
       assert.equal(staged.ok, true, staged.message);
     }
     const prepared = await prepareDocumentSnapshot(
@@ -102,6 +85,173 @@ test("서버 export를 실제 XLSX로 생성·재파싱한 무수정 파일은 0
     assert.equal(Number(prepared.snapshot.exclude_count), 0);
     assert.equal(Number(prepared.snapshot.unchanged_count), exported.documents.length);
     assert.equal(Number(prepared.snapshot.identity_change_count), 0);
+  } finally {
+    database.close();
+  }
+});
+
+test("다른 문서는 사용 중지된 현재 문서 위치로 이동할 수 없다", async () => {
+  const database = await createMigratedDatabase();
+  const env = { DB: sqliteD1(database) };
+  const actor = actorFixture();
+  try {
+    const exported = await getDocumentSnapshotExport(env, actor);
+    const inactive = exported.documents.find((document) => {
+      const row = database.prepare(`
+        SELECT rack.is_active AS rack_active, slot.is_active AS slot_active
+        FROM documents d
+        JOIN rack_slots slot ON slot.id = d.rack_slot_id
+        JOIN racks rack ON rack.id = slot.rack_id
+        WHERE d.excel_row_key = ?
+      `).get(document.rowKey);
+      return Number(row?.rack_active) === 0 || Number(row?.slot_active) === 0;
+    });
+    const targetIndex = exported.documents.findIndex((document) => document.rowKey !== inactive?.rowKey);
+    assert.ok(inactive && targetIndex >= 0, "활성 위치 문서와 사용 중지 위치 문서가 모두 필요하다");
+
+    const rows = exported.documents.map((document, index) => ({
+      rowNumber: index + 2,
+      sourceRowKey: document.rowKey,
+      source: index === targetIndex ? {
+        ...document,
+        zoneNumber: inactive.zoneNumber,
+        rackNumber: inactive.rackNumber,
+        rackColumn: inactive.rackColumn,
+        shelfNumber: inactive.shelfNumber,
+        rackFace: inactive.rackFace
+      } : document
+    }));
+    const created = await createDocumentSnapshot(env, {
+      sourceName: "inactive-location-move.xlsx",
+      sourceHash: "7".repeat(64),
+      sourceSize: 4096,
+      syncReason: "사용 중지 위치 이동 차단 검증",
+      totalCount: rows.length,
+      schemaVersion: exported.schemaVersion,
+      mode: "managed",
+      baseVersion: exported.baseVersion,
+      currentSnapshotId: exported.currentSnapshotId || "",
+      exportManifestId: exported.exportManifestId,
+      canonicalExportHash: exported.canonicalExportHash,
+      hasRowKeys: true
+    }, actor);
+    assert.equal(created.ok, true, created.message);
+    assert.equal((await stageDocumentSnapshotRows(env, created.id, rows)).ok, true);
+    const prepared = await prepareDocumentSnapshot(
+      env,
+      created.id,
+      await loadDocumentFormOptions(env, { activeOnly: true }),
+      null,
+      actor
+    );
+    assert.equal(prepared.ok, false);
+    assert.ok(prepared.errors.some((error) => error.rowNumber === targetIndex + 2 && error.field === "location"));
+  } finally {
+    database.close();
+  }
+});
+
+test("사용 중지된 양면 랙의 현재 문서는 면만 바꿀 수 없다", async () => {
+  const database = await createMigratedDatabase();
+  const env = { DB: sqliteD1(database) };
+  const actor = actorFixture();
+  try {
+    const exported = await getDocumentSnapshotExport(env, actor);
+    const inactive = exported.documents.find((document) => {
+      const row = database.prepare(`
+        SELECT rack.is_active AS rack_active, slot.is_active AS slot_active, rack.is_single_sided
+        FROM documents d
+        JOIN rack_slots slot ON slot.id = d.rack_slot_id
+        JOIN racks rack ON rack.id = slot.rack_id
+        WHERE d.excel_row_key = ?
+      `).get(document.rowKey);
+      return (Number(row?.rack_active) === 0 || Number(row?.slot_active) === 0) && Number(row?.is_single_sided) === 0;
+    });
+    assert.ok(inactive, "사용 중지된 양면 랙의 현재 문서가 필요하다");
+
+    const rows = exported.documents.map((document, index) => ({
+      rowNumber: index + 2,
+      sourceRowKey: document.rowKey,
+      source: document.rowKey === inactive.rowKey ? {
+        ...document,
+        rackFace: document.rackFace === "1면" ? "2면" : "1면"
+      } : document
+    }));
+    const created = await createDocumentSnapshot(env, {
+      sourceName: "inactive-rack-face-change.xlsx",
+      sourceHash: "5".repeat(64),
+      sourceSize: 4096,
+      syncReason: "사용 중지 위치 면 변경 차단 검증",
+      totalCount: rows.length,
+      schemaVersion: exported.schemaVersion,
+      mode: "managed",
+      baseVersion: exported.baseVersion,
+      currentSnapshotId: exported.currentSnapshotId || "",
+      exportManifestId: exported.exportManifestId,
+      canonicalExportHash: exported.canonicalExportHash,
+      hasRowKeys: true
+    }, actor);
+    assert.equal(created.ok, true, created.message);
+    assert.equal((await stageDocumentSnapshotRows(env, created.id, rows)).ok, true);
+    const prepared = await prepareDocumentSnapshot(
+      env,
+      created.id,
+      await loadDocumentFormOptions(env, { activeOnly: true }),
+      null,
+      actor
+    );
+    assert.equal(prepared.ok, false);
+    assert.ok(prepared.errors.some((error) => error.field === "location"));
+  } finally {
+    database.close();
+  }
+});
+
+test("bootstrap seed 관리 ID는 사용 중지 위치 예외를 얻지 않는다", async () => {
+  const database = await createMigratedDatabase();
+  const env = { DB: sqliteD1(database) };
+  const actor = actorFixture();
+  try {
+    const exported = await getDocumentSnapshotExport(env, actor);
+    const inactive = exported.documents.find((document) => {
+      const row = database.prepare(`
+        SELECT rack.is_active AS rack_active, slot.is_active AS slot_active
+        FROM documents d
+        JOIN rack_slots slot ON slot.id = d.rack_slot_id
+        JOIN racks rack ON rack.id = slot.rack_id
+        WHERE d.excel_row_key = ?
+      `).get(document.rowKey);
+      return Number(row?.rack_active) === 0 || Number(row?.slot_active) === 0;
+    });
+    assert.ok(inactive, "사용 중지 위치의 bootstrap seed가 필요하다");
+
+    const created = await createDocumentSnapshot(env, {
+      sourceName: "bootstrap-inactive-seed.xlsx",
+      sourceHash: "4".repeat(64),
+      sourceSize: 4096,
+      syncReason: "bootstrap seed 위치 예외 차단 검증",
+      totalCount: 1,
+      schemaVersion: exported.schemaVersion,
+      mode: "bootstrap",
+      hasRowKeys: true,
+      bootstrapConfirmation: "BOOTSTRAP",
+      backupConfirmed: true
+    }, actor);
+    assert.equal(created.ok, true, created.message);
+    assert.equal((await stageDocumentSnapshotRows(env, created.id, [{
+      rowNumber: 2,
+      sourceRowKey: inactive.rowKey,
+      source: inactive
+    }])).ok, true);
+    const prepared = await prepareDocumentSnapshot(
+      env,
+      created.id,
+      await loadDocumentFormOptions(env, { activeOnly: true }),
+      null,
+      actor
+    );
+    assert.equal(prepared.ok, false);
+    assert.ok(prepared.errors.some((error) => error.field === "location"));
   } finally {
     database.close();
   }

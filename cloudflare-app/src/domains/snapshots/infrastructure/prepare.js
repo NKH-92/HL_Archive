@@ -46,8 +46,18 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
         d.id, d.storage_code, d.excel_row_key, d.sync_state, d.category_id, d.document_number,
         d.revision_number, d.revision_date, d.disposal_due_year, d.document_name,
         d.note, d.rack_slot_id, d.rack_face, d.status, d.row_version,
+        rs.slot_code AS current_slot_code,
+        rs.column_number AS current_column_number,
+        rs.shelf_number AS current_shelf_number,
+        r.id AS current_rack_id,
+        r.code AS current_rack_code,
+        r.zone_number AS current_zone_number,
+        r.rack_number AS current_rack_number,
+        r.is_single_sided AS current_rack_is_single_sided,
         GROUP_CONCAT(dt.tag_id, ',') AS tag_ids
       FROM documents d
+      JOIN rack_slots rs ON rs.id = d.rack_slot_id
+      JOIN racks r ON r.id = rs.rack_id
       LEFT JOIN document_tags dt ON dt.document_id = d.id
       GROUP BY d.id
       ORDER BY d.id
@@ -100,11 +110,28 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
     );
   }
 
+  const documents = documentResult.results ?? [];
+  const preservedLocationsByRowKey = new Map();
+  const preservedSlotsById = new Map();
+  for (const document of documents) {
+    const slot = currentDocumentSlot(document);
+    if (!slot) continue;
+    preservedSlotsById.set(Number(slot.id), slot);
+    const rowKey = clean(document.excel_row_key);
+    if (snapshot.mode !== "bootstrap" && document.sync_state === "current" && rowKey) {
+      preservedLocationsByRowKey.set(rowKey, {
+        slot,
+        rackFace: clean(document.rack_face)
+      });
+    }
+  }
+
   const lookup = {
     categoryNames: new Map((options.categories || []).map((category) => [Number(category.id), category.name])),
     tagNames: new Map((options.tags || []).map((tag) => [Number(tag.id), tag.name])),
     slotsById: new Map((options.slots || []).map((slot) => [Number(slot.id), slot]))
   };
+  for (const [slotId, slot] of preservedSlotsById) lookup.slotsById.set(slotId, slot);
 
   let sourceRows;
   try {
@@ -116,7 +143,7 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
     }));
     if (usesMembership) {
       const stagedNumbers = new Set(stagedRows.map((row) => Number(row.row_number)));
-      const documentsByKey = new Map((documentResult.results ?? []).map((document) => [clean(document.excel_row_key), document]));
+      const documentsByKey = new Map(documents.map((document) => [clean(document.excel_row_key), document]));
       for (const membership of membershipRows) {
         const rowNumber = Number(membership.row_number);
         if (stagedNumbers.has(rowNumber)) continue;
@@ -138,7 +165,10 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
     return failSnapshotValidation(env, snapshotId, "저장된 엑셀 행 또는 기준 membership을 읽을 수 없습니다.", actor);
   }
 
-  const prepared = prepareCanonicalSnapshotRows(sourceRows, options);
+  const prepared = prepareCanonicalSnapshotRows(sourceRows, {
+    ...options,
+    preservedLocationsByRowKey
+  });
   if (!prepared.ok) {
     return failSnapshotValidation(
       env,
@@ -152,8 +182,8 @@ export async function prepareDocumentSnapshot(env, snapshotId, options, _legacyP
   }
 
   const existingDocuments = snapshot.mode === "bootstrap"
-    ? (documentResult.results ?? []).filter((document) => !isInitialBootstrapSeed(document))
-    : (documentResult.results ?? []);
+    ? documents.filter((document) => !isInitialBootstrapSeed(document))
+    : documents;
   const match = matchCanonicalSnapshotRows(prepared.items, existingDocuments, {
     managedMode: snapshot.mode !== "bootstrap",
     lookup
@@ -361,6 +391,26 @@ function sourceRowFromCurrentDocument(document, membership, lookup) {
     tags: tagNames.join(";") || NOT_APPLICABLE,
     note: clean(document.note) || NOT_APPLICABLE,
     status: document.status === "disposed" ? "폐기" : "보관중"
+  };
+}
+
+function currentDocumentSlot(document) {
+  const id = Number(document.rack_slot_id || 0);
+  const rackId = Number(document.current_rack_id || 0);
+  const code = clean(document.current_rack_code);
+  const columnNumber = Number(document.current_column_number || 0);
+  const shelfNumber = Number(document.current_shelf_number || 0);
+  if (!id || !rackId || !code || !columnNumber || !shelfNumber) return null;
+  return {
+    id,
+    slot_code: clean(document.current_slot_code),
+    column_number: columnNumber,
+    shelf_number: shelfNumber,
+    rack_id: rackId,
+    code,
+    zone_number: Number(document.current_zone_number || 0),
+    rack_number: Number(document.current_rack_number || 0),
+    is_single_sided: Number(document.current_rack_is_single_sided || 0)
   };
 }
 

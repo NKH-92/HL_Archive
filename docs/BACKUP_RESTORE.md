@@ -42,9 +42,16 @@ Guarded migration은 이 metadata가 현재 run/SHA/environment/database ID와 �
 
 최소 권한 D1 token으로 읽기 전용 확인을 먼저 수행한다.
 
+먼저 `wrangler.jsonc`의 `env.production.d1_databases`에서 `DB` binding의 database 이름과 ID를 확인하고, 배포된 운영 Worker의 `DB` binding 및 해당 release evidence의 Core database ID와 일치하는지 대조한다. 아래 명령의 `DB`는 이 production binding을 해석하므로, 과거 DB 이름을 직접 입력해 다른 D1을 조회하거나 복구하는 실수를 방지한다.
+
 ```powershell
 cd cloudflare-app
-npx wrangler d1 time-travel info hanlim-archive --env production --json
+npx wrangler d1 info DB --env production
+```
+
+```powershell
+cd cloudflare-app
+npx wrangler d1 time-travel info DB --env production --json
 ```
 
 배포 직전 상태로 복구할 때는 해당 release evidence의 bookmark를 사용한다. 특정 사고 시각을 사용할 때는 Cloudflare가 반환하는 실제 보존 범위 안인지 확인한다.
@@ -64,10 +71,10 @@ npx wrangler d1 time-travel info hanlim-archive --env production --json
 데이터 손상 또는 잘못된 mutation을 되돌려야 할 때만 별도 승인 후 수행한다.
 
 ```powershell
-npx wrangler d1 time-travel restore hanlim-archive --env production --bookmark "<CORE_BOOKMARK>"
+npx wrangler d1 time-travel restore DB --env production --bookmark "<CORE_BOOKMARK>"
 ```
 
-실행 직전 database 이름·ID·bookmark·승인 기록을 다시 대조한다.
+실행 직전 `d1 info DB --env production` 결과의 database 이름·ID, bookmark와 승인 기록을 다시 대조한다. 명시적 database 이름을 대신 사용해야 하는 예외 상황이면 release evidence에 기록된 Core database ID와의 일치를 별도로 증명한다.
 
 ## 6. D1 restore 후 검증
 
