@@ -281,7 +281,7 @@ export async function getDisposalHistoryPage(env, { query = "", page = 1, pageSi
   `).bind(cleanQuery, like, like, like).first();
   const result = await env.DB.prepare(`
     SELECT
-      dl.id, dl.document_id, dl.disposal_batch_id, dl.reason, dl.performed_by, dl.created_at,
+      dl.id, d.id AS document_id, dl.disposal_batch_id, dl.reason, dl.performed_by, dl.created_at,
       d.document_number, d.revision_number, d.document_name, d.status, d.updated_at,
       c.name AS category_name,
       ${locationSnapshotSql("d", "r", "rs")} AS location_snapshot,
