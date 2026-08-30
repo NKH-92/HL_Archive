@@ -58,6 +58,17 @@ test("대분류 관리는 정렬 숫자 대신 필요한 기능과 확장 가능
   assert.match(html, /다시 사용하면 새 문서 등록과 대분류 선택 목록에 표시됩니다/);
 });
 
+test("태그 수정 입력란은 각 태그 이름을 포함한 접근 가능한 이름을 제공한다", async () => {
+  const response = masters.tagsPage({
+    session: { username: "admin", displayName: "관리자", role: "Admin", csrfToken: "csrf-token-123" },
+    tags: [{ id: 3, name: "중요문서", description: "우선 관리", is_active: 1, row_version: 7 }]
+  });
+  const html = await response.text();
+
+  assert.match(html, /name="name" value="중요문서" aria-label="중요문서 태그 이름"/);
+  assert.match(html, /name="description" value="우선 관리" aria-label="중요문서 태그 설명"/);
+});
+
 test("masters의 SQL은 infrastructure에만 존재한다", async () => {
   const nonInfrastructure = [
     "../src/domains/masters/domain/policy.js",

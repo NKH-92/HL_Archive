@@ -122,14 +122,17 @@ test("현재 폐기 문서는 최신 폐기 사유·승인 참조와 함께 페�
       return sql.includes("COUNT(*) AS count") ? { count: 1 } : null;
     },
     all(sql) {
-      return sql.includes("FROM documents d") ? [{ id: 5, document_number: "SOP-QA-014" }] : [];
+      return sql.includes("FROM documents d") ? [{ id: null, document_id: 5, document_number: "SOP-QA-014" }] : [];
     }
   });
   const page = await getDisposalHistoryPage(env, { query: "SOP", page: 1, pageSize: 30 });
 
   assert.equal(page.pagination.totalItems, 1);
+  assert.equal(page.items[0].document_id, 5);
   assert.equal(page.items[0].document_number, "SOP-QA-014");
   const historyRead = env.state.calls.find((call) => call.type === "all" && call.sql.includes("FROM documents d"));
+  assert.match(historyRead.sql, /d\.id AS document_id/);
+  assert.doesNotMatch(historyRead.sql, /dl\.document_id/);
   assert.match(historyRead.sql, /d\.status = 'disposed'/);
   assert.match(historyRead.sql, /d\.sync_state = 'current'/);
   assert.match(historyRead.sql, /approval_reference/);

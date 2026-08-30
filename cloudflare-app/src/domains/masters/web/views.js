@@ -148,12 +148,13 @@ function compareCategoriesForManagement(left, right) {
 function masterRow(row) {
   const active = readBoolean(row.is_active);
   const base = `/tags/${row.id}`;
+  const name = escapeHtml(row.name);
   return `
     <article class="master-row">
       <form method="post" action="${base}/edit" class="master-form">
         <input type="hidden" name="expectedRowVersion" value="${escapeHtml(row.row_version ?? 0)}">
-        <input name="name" value="${escapeHtml(row.name)}" required>
-        <input name="description" value="${escapeHtml(row.description || "")}" placeholder="설명">
+        <input name="name" value="${name}" aria-label="${name} 태그 이름" required>
+        <input name="description" value="${escapeHtml(row.description || "")}" aria-label="${name} 태그 설명" placeholder="설명">
         <label class="check-inline"><input type="checkbox" name="isActive" value="1" ${active ? "checked" : ""}> ${active ? "사용" : "다시 사용"}</label>
         <button type="submit">수정</button>
       </form>

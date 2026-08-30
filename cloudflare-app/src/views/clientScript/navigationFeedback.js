@@ -30,9 +30,16 @@ export const TOAST_MESSAGES = Object.freeze({
 export function navigationFeedbackScript() {
   const toastMessages = JSON.stringify(TOAST_MESSAGES);
   return `      var currentPath = location.pathname;
+      var currentUrl = new URL(location.href);
       var activeNavItems = Array.from(document.querySelectorAll('.archive-nav-item, .nav-sub-link, [data-command-item]')).filter(function (item) {
         var href = item.getAttribute('href') || '';
-        return href === currentPath || (href.length > 1 && currentPath.indexOf(href + '/') === 0);
+        if (!href) return false;
+        var itemUrl = new URL(href, location.origin);
+        var pathMatches = itemUrl.pathname === currentPath || (itemUrl.pathname.length > 1 && currentPath.indexOf(itemUrl.pathname + '/') === 0);
+        var queryMatches = Array.from(itemUrl.searchParams.entries()).every(function (entry) {
+          return currentUrl.searchParams.getAll(entry[0]).includes(entry[1]);
+        });
+        return pathMatches && queryMatches;
       }).sort(function (left, right) {
         return (right.getAttribute('href') || '').length - (left.getAttribute('href') || '').length;
       });

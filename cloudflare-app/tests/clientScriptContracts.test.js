@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
 
 import { escapeHtml } from "../src/ui/html/escape.js";
 import { EXCEL_SNAPSHOT_HEADERS } from "../src/domains/snapshots/domain/workbookSchema.js";
 import * as clientScriptModule from "../src/views/clientScript.js";
 import { excelSnapshotScript } from "../src/views/clientScript/excelSnapshots.js";
-import { TOAST_MESSAGES } from "../src/views/clientScript/navigationFeedback.js";
+import { navigationFeedbackScript, TOAST_MESSAGES } from "../src/views/clientScript/navigationFeedback.js";
 
 function sourceModules(directory = new URL("../src/", import.meta.url)) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -99,12 +100,54 @@ test("명령 팔레트는 키보드 이동과 포커스 복귀 계약을 유지�
 test("접이식 내비게이션은 현재 그룹을 열고 사용자가 연 상태를 기억한다", () => {
   const script = clientScriptModule.clientScript();
 
+  assert.match(script, /var currentUrl = new URL\(location\.href\)/);
+  assert.match(script, /itemUrl\.searchParams\.entries\(\)/);
+  assert.match(script, /currentUrl\.searchParams\.getAll\(entry\[0\]\)\.includes\(entry\[1\]\)/);
   assert.match(script, /hanlimNavigationGroups/);
   assert.match(script, /document\.querySelectorAll\('\[data-nav-group\]'\)/);
   assert.match(script, /group\.classList\.toggle\('has-active', hasActiveItem\)/);
   assert.match(script, /group\.open = hasActiveItem \|\| storedNavigationGroups\.includes\(key\)/);
   assert.match(script, /group\.addEventListener\('toggle'/);
   assert.match(script, /localStorage\.setItem\('hanlimNavigationGroups'/);
+});
+
+test("쿼리 기반 내비게이션은 추가 검색 조건이 있어도 가장 구체적인 메뉴를 활성화한다", () => {
+  const item = (href) => ({
+    href,
+    attributes: {},
+    classList: { add() {} },
+    getAttribute(name) { return name === "href" ? href : this.attributes[name] || null; },
+    setAttribute(name, value) { this.attributes[name] = value; }
+  });
+  const baseItem = item("/documents/disposal");
+  const disposedItem = item("/documents/disposal?tab=documents");
+  const document = {
+    querySelectorAll(selector) {
+      return selector.includes("archive-nav-item") ? [baseItem, disposedItem] : [];
+    },
+    querySelector() { return null; },
+    addEventListener() {}
+  };
+
+  vm.runInNewContext(navigationFeedbackScript(), {
+    Array,
+    URL,
+    URLSearchParams,
+    document,
+    history: { replaceState() {} },
+    localStorage: { getItem() { return "[]"; }, setItem() {} },
+    location: {
+      href: "https://example.test/documents/disposal?tab=documents&q=PV",
+      origin: "https://example.test",
+      pathname: "/documents/disposal",
+      search: "?tab=documents&q=PV"
+    },
+    navigator: {},
+    window: {}
+  });
+
+  assert.equal(baseItem.attributes["aria-current"], undefined);
+  assert.equal(disposedItem.attributes["aria-current"], "page");
 });
 
 test("대분류 관리 목록은 이름·설명과 사용 상태로 즉시 좁혀 본다", () => {
