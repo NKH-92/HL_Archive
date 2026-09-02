@@ -33,6 +33,7 @@
     "admin:remediate-main:remote": "node scripts/remediate-main-admin-guarded.mjs",
     "users:roster": "node scripts/build-user-roster.mjs",
     "users:provision:remote": "node scripts/provision-users-guarded.mjs",
+    "demo-reviewer:provision:remote": "node scripts/provision-demo-reviewer-guarded.mjs",
     "dev": "wrangler dev",
     "predeploy": "npm run build:browser && npm run verify",
     "deploy": "npm run predeploy && node scripts/deploy-guarded.mjs",

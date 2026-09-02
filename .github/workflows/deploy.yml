@@ -225,6 +225,8 @@ jobs:
           export SMOKE_PASSWORD="$(jq -r .reader.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
           export SMOKE_ADMIN_USERNAME="$(jq -r .admin.username "$RELEASE_SMOKE_CREDENTIAL_PATH")"
           export SMOKE_ADMIN_PASSWORD="$(jq -r .admin.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
+          export SMOKE_DEMO_USERNAME="$(jq -r .demo.username "$RELEASE_SMOKE_CREDENTIAL_PATH")"
+          export SMOKE_DEMO_PASSWORD="$(jq -r .demo.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
           export SMOKE_EXPECTED_WORKER_VERSION="$PREVIOUS_VERSION_ID"
           set -o pipefail
           npm run smoke:release 2>&1 | tee release-evidence/pre-deploy-smoke.txt
@@ -277,6 +279,9 @@ jobs:
             export SMOKE_PASSWORD="$(jq -r .reader.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
             export SMOKE_ADMIN_USERNAME="$(jq -r .admin.username "$RELEASE_SMOKE_CREDENTIAL_PATH")"
             export SMOKE_ADMIN_PASSWORD="$(jq -r .admin.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
+            export SMOKE_DEMO_USERNAME="$(jq -r .demo.username "$RELEASE_SMOKE_CREDENTIAL_PATH")"
+            export SMOKE_DEMO_PASSWORD="$(jq -r .demo.password "$RELEASE_SMOKE_CREDENTIAL_PATH")"
+            export SMOKE_REQUIRE_DEMO_READONLY=1
           fi
           export SMOKE_EXPECTED_WORKER_VERSION="$DEPLOYED_VERSION_ID"
           set -o pipefail

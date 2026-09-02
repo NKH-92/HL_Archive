@@ -65,6 +65,8 @@ const IMMUTABILITY_TRIGGERS = [
   "trg_category_sync_version_insert",
   "trg_category_sync_version_update",
   "trg_disposal_logs_no_update",
+  "trg_demo_readonly_user_insert_guard",
+  "trg_demo_readonly_user_update_guard",
   "trg_document_audit_logs_no_delete",
   "trg_document_audit_logs_no_update",
   "trg_document_capacity_insert",

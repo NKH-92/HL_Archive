@@ -83,6 +83,7 @@ export async function renderRoleTemplateEdit(env, session, key, error = "") {
   // 일괄 반영은 승인된 일반 계정만 대상으로 한다. 대기·반려·사용중지 계정은 상태 절차로 처리한다.
   const eligibleUsers = users.filter((user) => (
     user.role === "User"
+    && user.access_mode !== "demo_readonly"
     && user.status === "approved"
     && Number(user.security_review_required || 0) !== 1
   ));
@@ -134,7 +135,7 @@ export async function handleUserStatusAction(env, session, userId, action) {
 export async function renderUserDelete(env, session, userId, error = "") {
   const user = await getAppUser(env, userId);
   if (!user) return notFoundPage(session);
-  if (session?.role !== "Admin") {
+  if (session?.role !== "Admin" && !session?.demoReadAuthorized) {
     return errorPage("계정 완전삭제는 시스템 관리자만 수행할 수 있습니다.", session, 403);
   }
   if (Number(user.id) === Number(session.userId) || user.username === session.username) {

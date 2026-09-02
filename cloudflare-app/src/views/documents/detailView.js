@@ -4,17 +4,17 @@ import { locationLabel, rackFaceLabel } from "../../domains/racks/index.js";
 import { readBoolean } from "../../shared/coercion.js";
 import { formatRevisionLabel } from "../../shared/documents/revision.js";
 import { escapeHtml } from "../../ui/html/escape.js";
-import { hasPermission, PERMISSIONS } from "../../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../../permissions.js";
 import { zoneFloorPlanView } from "../floorPlanViews.js";
 import { page, statusBadge, timeline, timelineItem } from "../layout.js";
 import { rackViewOrientation } from "../../domains/racks/domain/orientation.js";
 
 export function documentDetailsPage({ session, document, tags, disposalLogs, auditLogs, movements = [], revisionHistory = [], floorPlan = [] }) {
-  const canManageDocuments = hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS);
-  const canManageDisposals = hasPermission(session, PERMISSIONS.MANAGE_DISPOSALS);
-  const canViewAudit = hasPermission(session, PERMISSIONS.VIEW_AUDIT);
-  const canViewMovements = canViewAudit || hasPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
-  const canMoveDocuments = hasPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
+  const canManageDocuments = hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS);
+  const canManageDisposals = hasReadPermission(session, PERMISSIONS.MANAGE_DISPOSALS);
+  const canViewAudit = hasReadPermission(session, PERMISSIONS.VIEW_AUDIT);
+  const canViewMovements = canViewAudit || hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
+  const canMoveDocuments = hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
   const location = locationLabel(document);
   const latestDisposal = disposalLogs.find((log) => log.action === "disposed");
   const currentRevision = revisionHistory.find((item) => Number(item.id) === Number(document.id));
@@ -80,12 +80,12 @@ export function documentDetailsPage({ session, document, tags, disposalLogs, aud
 
     ${revisionHistory.length > 1 ? renderRevisionHistory(revisionHistory, document.id) : ""}
 
-    ${isExcluded ? "" : documentActions(document, { canManageDocuments, canMoveDocuments, canManageDisposals, isAdmin: session.role === "Admin", replacementId })}
+    ${isExcluded ? "" : documentActions(document, { canManageDocuments, canMoveDocuments, canManageDisposals, isAdmin: session.role === "Admin" || session.demoReadAuthorized, replacementId })}
 
     ${canViewAudit ? `<details class="panel detail-history"><summary>감사 이력 <span class="count-badge">${auditLogs.length}건</span></summary>${timeline(auditLogs, renderAuditLog, "감사 이력이 없습니다.")}</details>` : ""}
     ${canViewMovements ? `<details class="panel detail-history"><summary>위치 이동 이력 <span class="count-badge">${movements.length}건</span></summary>${timeline(movements, renderMovementLog, "위치 이동 이력이 없습니다.")}</details>` : ""}
     ${!isExcluded && canManageDisposals && document.status === "active" ? disposeModal(document) : ""}
-    ${!isExcluded && session.role === "Admin" && document.status === "disposed" && !replacementId ? restoreModal(document) : ""}
+    ${!isExcluded && (session.role === "Admin" || session.demoReadAuthorized) && document.status === "disposed" && !replacementId ? restoreModal(document) : ""}
   </div>`, session);
 }
 

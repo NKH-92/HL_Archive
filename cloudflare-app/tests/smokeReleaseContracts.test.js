@@ -282,8 +282,10 @@ test("release smoke는 migrated SQLite와 실제 Worker fetch 경로를 종단 �
   try {
     const readerPassword = "reader-password-2026";
     const adminPassword = "admin-password-2026";
+    const demoPassword = "demo-password-2026";
     const readerRecord = await createPasswordRecord(readerPassword);
     const adminRecord = await createPasswordRecord(adminPassword);
+    const demoRecord = await createPasswordRecord(demoPassword);
     const insert = database.prepare(`
       INSERT INTO app_users (
         username, display_name, password_salt, password_hash,
@@ -293,6 +295,13 @@ test("release smoke는 migrated SQLite와 실제 Worker fetch 경로를 종단 �
     `);
     insert.run("reader@example.com", "읽기 사용자", readerRecord.salt, readerRecord.hash, "User", 0);
     insert.run("admin@example.com", "릴리스 관리 사용자", adminRecord.salt, adminRecord.hash, "User", 1);
+    database.prepare(`
+      INSERT INTO app_users (
+        username, display_name, password_salt, password_hash,
+        status, role, role_template_key, access_mode, approved_at, approved_by,
+        must_change_password, security_review_required, session_epoch
+      ) VALUES (?, ?, ?, ?, 'approved', 'User', 'viewer', 'demo_readonly', CURRENT_TIMESTAMP, 'test-fixture', 0, 0, 0)
+    `).run("demo@example.com", "시연 조회", demoRecord.salt, demoRecord.hash);
 
     const env = {
       DB: sqliteD1(database),
@@ -304,7 +313,10 @@ test("release smoke는 migrated SQLite와 실제 Worker fetch 경로를 종단 �
       password: readerPassword,
       adminUsername: "admin@example.com",
       adminPassword,
+      demoUsername: "demo@example.com",
+      demoPassword,
       requireAdmin: true,
+      requireDemoReadonly: true,
       requireSessionEpochCompatibility: true,
       allowedHosts: ["archive.example"],
       fetchImpl: (input, init) => worker.fetch(new Request(input, init), env),
@@ -318,7 +330,8 @@ test("release smoke는 migrated SQLite와 실제 Worker fetch 경로를 종단 �
       search: 200,
       origin: "https://archive.example",
       sessionEpochCompatibility: 1,
-      adminSettings: 200
+      adminSettings: 200,
+      demoReadonly: { screens: 9, blockedDownloads: 3, blockedMutation: 403 }
     });
   } finally {
     database.close();

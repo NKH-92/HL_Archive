@@ -1,13 +1,13 @@
 // 문서 위치 이동 전용 화면과 전역 이동 이력.
 
-import { hasPermission, PERMISSIONS } from "../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../permissions.js";
 import { locationLabel } from "../domains/racks/index.js";
 import { escapeHtml } from "../ui/html/escape.js";
 import { locationPicker, locationPickerScript } from "./documentLocationPicker.js";
 import { alertDanger, emptyState, option, page, paginationNav, sectionHeader } from "./layout.js";
 
 export function canMoveDocuments(session) {
-  return hasPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
+  return hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
 }
 
 export function movementFormPage({ session, document, slots, movements = [], error = "", values = {} }) {

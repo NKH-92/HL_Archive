@@ -14,8 +14,8 @@ test("release evidence는 migration checksum과 schema manifest를 보존한다"
   const manifest = JSON.parse(await readFile(path.join(target, "migration-manifest.json"), "utf8"));
 
   assert.equal(evidence.sourceRevision, "abc123");
-  assert.equal(evidence.migrationCount, 59);
-  assert.equal(Object.keys(manifest.checksums).length, 59);
+  assert.equal(evidence.migrationCount, 60);
+  assert.equal(Object.keys(manifest.checksums).length, 60);
   assert.ok(manifest.schema.tables.includes("documents"));
   assert.ok(manifest.schema.tables.includes("search_projection_documents"));
   // 0049에서 크로스 DB 보상 계층의 마지막 잔재를 제거했다.

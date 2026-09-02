@@ -1,6 +1,6 @@
 // 인증 이후 애플리케이션 라우트. path를 다시 해석하지 않고 routeRegistry 결과로 dispatch한다.
 import { accessDeniedPage, notFoundPage } from "../views/authViews.js";
-import { sessionHasManagementAccess } from "../permissions.js";
+import { isDemoReadOnly, sessionHasManagementAccess } from "../permissions.js";
 import { redirect } from "../platform/http/responses.js";
 import { resolveAuthenticatedRoute } from "../app/routeRegistry.js";
 import { requireAdmin } from "./guards.js";
@@ -47,6 +47,15 @@ import { routeWorkflowRequest } from "./workflowRouter.js";
 export async function routeAuthenticatedRequest(request, env, session, url, path, effects = {}) {
   const resolved = resolveAuthenticatedRoute(path, request.method);
   if (!resolved) return notFoundPage(session);
+
+  if (isDemoReadOnly(session)) {
+    const demoAccess = resolved.descriptor.demoAccess;
+    const allowed = demoAccess === "screen"
+      || demoAccess === "interactive-read"
+      || (demoAccess === "forced-password" && session.mustChangePassword);
+    if (!allowed) return accessDeniedPage(session);
+    if (request.method === "GET") session = { ...session, demoReadAuthorized: true };
+  }
 
   const routeId = resolved.descriptor.id;
   const params = resolved.params;

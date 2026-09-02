@@ -1,7 +1,7 @@
 // 문서고 도면(플로어 플랜)과 랙 지도 렌더링.
 
 import { readBoolean } from "../shared/coercion.js";
-import { hasPermission, PERMISSIONS } from "../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../permissions.js";
 import { escapeHtml } from "../ui/html/escape.js";
 import { page } from "./layout.js";
 
@@ -190,7 +190,7 @@ export function archiveMap(racks, hits) {
 }
 
 export function floorPlanPage({ session, floorPlan = [] }) {
-  const canManageMasters = hasPermission(session, PERMISSIONS.MANAGE_MASTERS);
+  const canManageMasters = hasReadPermission(session, PERMISSIONS.MANAGE_MASTERS);
   const rackCount = floorPlan.reduce((sum, region) => sum + region.racks.length, 0);
   const zoneRows = floorPlan.map((region) => ({
     zoneNumber: Number(region.zoneNumber),

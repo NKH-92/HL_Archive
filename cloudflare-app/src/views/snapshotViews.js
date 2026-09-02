@@ -1,4 +1,4 @@
-import { hasPermission, PERMISSIONS, PERMISSION_LABELS } from "../permissions.js";
+import { hasReadPermission, PERMISSIONS, PERMISSION_LABELS } from "../permissions.js";
 import { escapeHtml } from "../ui/html/escape.js";
 import { formatRevisionLabel } from "../shared/documents/revision.js";
 import { alertDanger, page } from "./layout.js";
@@ -31,8 +31,8 @@ const FLAG_LABELS = Object.freeze({
 });
 
 export function documentSnapshotPage({ session, state, snapshots = [], error = "", applyMode = "admin-only" }) {
-  const canApply = hasPermission(session, PERMISSIONS.APPLY_DOCUMENT_SNAPSHOTS)
-    && (applyMode !== "admin-only" || session.role === "Admin");
+  const canApply = hasReadPermission(session, PERMISSIONS.APPLY_DOCUMENT_SNAPSHOTS)
+    && (applyMode !== "admin-only" || session.role === "Admin" || session.demoReadAuthorized);
   const rows = snapshots.map((snapshot) => `
     <tr>
       <td class="mono" data-label="작업 번호"><a href="/document-snapshots/${Number(snapshot.id)}">${escapeHtml(snapshot.snapshot_code)}</a></td>

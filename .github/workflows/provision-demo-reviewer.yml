@@ -1,0 +1,46 @@
+name: Provision Demo Reviewer
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-production-maintenance
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    name: guarded production demo reviewer provisioning
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    defaults:
+      run:
+        working-directory: cloudflare-app
+    env:
+      CLOUDFLARE_ACCOUNT_ID: e2b9c1d94dc8f0f6e349bfbfb36cfa30
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ENV: production
+      D1_PROVISION_ENV: production
+      D1_TARGET_DATABASE_ID: a07324c0-7547-48a6-836e-3f0c50b85c36
+      USER_PROVISION_PASSWORD: ${{ secrets.USER_PROVISION_PASSWORD }}
+      DEMO_REVIEWER_CONFIRM: PROVISION-DEMO-REVIEWER:production:a07324c0-7547-48a6-836e-3f0c50b85c36
+      DEMO_REVIEWER_OPERATION_ID: github-run-${{ github.run_id }}
+      DEMO_REVIEWER_BASE_URL: https://hanlim-archive.skarhkdgus7.workers.dev
+      D1_ADMIN_CHECK_ENV: production
+      D1_ADMIN_CHECK_PHASE: post-migration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cloudflare-app/package-lock.json
+      - run: npm ci
+      - name: Provision fixed demo reviewer account
+        run: npm run demo-reviewer:provision:remote
+      - name: Verify administrator readiness is unchanged
+        run: npm run admin:check:remote

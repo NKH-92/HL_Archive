@@ -53,6 +53,11 @@ export function baseStyles() {
     .mobile-tabs { display: none; }
     .nav-user { margin-left: auto; display: flex; align-items: center; gap: var(--sp-1); }
     .session-pill { padding: var(--sp-1) var(--sp-3); background: var(--gray-100); border-radius: 999px; color: var(--gray-700); font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .demo-readonly-banner { position: sticky; top: 0; z-index: 44; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--action-strong); background: var(--action-soft); color: var(--warning); font-size: 12.5px; }
+    .demo-readonly-banner strong { white-space: nowrap; }
+    form[data-demo-disabled] { opacity: .72; }
+    form[data-demo-disabled] :is(input, select, textarea, button) { cursor: not-allowed; }
+    body[data-access-mode="demo_readonly"] :is([data-snapshot-errors-csv], [data-print-page], a[download]) { display: none !important; }
     .command-trigger { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 34px; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--gray-50); color: var(--gray-600); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .command-trigger:hover { border-color: var(--gray-300); color: var(--gray-900); }
     .command-trigger kbd { padding: 1px var(--sp-1); border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--gray-500); font: inherit; font-size: 10px; }

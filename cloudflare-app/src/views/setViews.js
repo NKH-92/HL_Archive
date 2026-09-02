@@ -1,13 +1,13 @@
 // 준비 문서 세트 화면.
 
-import { hasPermission, PERMISSIONS } from "../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../permissions.js";
 import { locationLabel } from "../domains/racks/index.js";
 import { escapeHtml } from "../ui/html/escape.js";
 import { archiveMap } from "./floorPlanViews.js";
 import { alertDanger, alertWarning, emptyState, metric, page, sectionHeader, statusBadge, timeline, timelineItem } from "./layout.js";
 
 export function setsPage({ session, sets, filters = {} }) {
-  const canManage = hasPermission(session, PERMISSIONS.MANAGE_SETS);
+  const canManage = hasReadPermission(session, PERMISSIONS.MANAGE_SETS);
   return page("준비 문서 세트", `
     <section class="page-head">
       <h1>준비 문서 세트</h1>
@@ -84,7 +84,7 @@ export function setClonePage({ session, set, documentCount = 0, values = {}, err
 }
 
 export function setDetailsPage({ session, set, documents, racks, logs = [], addQuery = "", addCandidates = null, selectedCandidateIds = [], preserveAddSelection = false, addResult = null, error = "", printedAt = new Date() }) {
-  const canManage = hasPermission(session, PERMISSIONS.MANAGE_SETS);
+  const canManage = hasReadPermission(session, PERMISSIONS.MANAGE_SETS);
   const isLocked = Number(set.is_locked) === 1;
   const disposedCount = documents.filter((doc) => doc.status !== "active").length;
   const excludedCount = documents.filter((doc) => doc.sync_state === "excluded").length;

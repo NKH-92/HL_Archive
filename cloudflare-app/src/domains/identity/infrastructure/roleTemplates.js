@@ -129,7 +129,7 @@ export async function applyRoleTemplateToUsers(env, key, targets, actor, expecte
   }
   const placeholders = normalizedTargets.map(() => "?").join(", ");
   const usersResult = await env.DB.prepare(`
-    SELECT id, username, display_name, role, status, security_review_required, role_template_key, row_version,
+    SELECT id, username, display_name, role, status, security_review_required, access_mode, role_template_key, row_version,
       ${PERMISSION_KEYS.join(", ")}
     FROM app_users
     WHERE id IN (${placeholders})
@@ -140,6 +140,7 @@ export async function applyRoleTemplateToUsers(env, key, targets, actor, expecte
     users.length !== normalizedTargets.length
     || users.some((user) => (
       user.role !== "User"
+      || user.access_mode === "demo_readonly"
       || user.status !== "approved"
       || Number(user.security_review_required || 0) === 1
       || Number(user.row_version) !== expectedById.get(Number(user.id))
@@ -157,6 +158,7 @@ export async function applyRoleTemplateToUsers(env, key, targets, actor, expecte
       WHERE id = ?
         AND role = 'User'
         AND status = 'approved'
+        AND access_mode = 'standard'
         AND security_review_required = 0
         AND row_version = ?
         AND EXISTS (
@@ -200,6 +202,7 @@ export async function applyRoleTemplateToUsers(env, key, targets, actor, expecte
         updated_at = CURRENT_TIMESTAMP
     WHERE role = 'User'
       AND status = 'approved'
+      AND access_mode = 'standard'
       AND security_review_required = 0
       AND EXISTS (
         SELECT 1

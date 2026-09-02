@@ -296,6 +296,14 @@ npm run users:roster -- --input ..\명단.xlsx --out provisioning-local\user-ros
 4. 임시 비밀번호는 사용자에게 별도 보안 채널로 전달한다. 화면 오류, 감사로그, 저장소, issue와 PR에 기록하지 않는다.
 5. 다수 계정을 같은 초기 비밀번호로 등록해야 할 때는 위 `Provision Archive Users` workflow를 사용한다.
 
+### 본사 시연 조회 계정
+
+`review@test.com`은 `Provision Demo Reviewer` workflow로만 생성한다. 표시 이름은 `본사 인사팀 검토`, 팀은 `본사 인사팀`, access mode는 `demo_readonly`로 고정한다. 기존 `USER_PROVISION_PASSWORD` production Environment secret을 초기 비밀번호로 사용하고 최초 로그인에서 변경을 강제하지만, 변경 완료 뒤에는 자기 비밀번호 변경 POST도 다시 차단한다. 계정은 자동 만료하지 않는다.
+
+workflow는 migration 0060이 적용된 운영 DB에서 동일 아이디가 없을 때만 생성한다. 같은 아이디가 일반 계정이거나 시연 정책과 다르면 덮어쓰거나 비밀번호를 초기화하지 않고 실패한다. 이미 정확한 시연 계정이면 credential을 건드리지 않고 성공한다. 시연 종료 뒤 시스템관리자가 계정을 `사용중지`하고, 다시 사용할 때는 비밀번호 초기화로 `must_change_password = 1`을 재설정한 뒤 `다시 사용`한다.
+
+시연 중에는 실제 문서·사용자·감사 데이터를 표시하므로 계정과 초기 비밀번호를 승인된 검토자에게만 별도 보안 채널로 전달한다. 화면의 저장 폼은 비활성화되고 서버는 업무 POST, 다운로드·CSV·raw export GET을 차단한다. 배포 smoke는 45분 TTL의 별도 `demo_readonly` 계정으로 화면 조회와 차단을 검증하므로 최종 `review@test.com`의 최초 비밀번호 상태를 소비하지 않는다.
+
 ### 독립 Admin
 
 메인 Admin이 보안 복구와 최초 비밀번호 변경을 마쳤다면 배포 readiness에서 정상 Admin으로 인정한다. 사용할 수 있는 Admin이 전혀 없거나 별도 비상 관리자를 운영하기로 한 경우에만 production Environment 승인 후 `Provision Independent Admin` workflow를 사용한다. 기존 계정을 덮어쓰지 않으며 알려진 bootstrap/smoke 사용자명은 거부한다.
