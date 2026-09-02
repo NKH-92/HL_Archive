@@ -1,6 +1,6 @@
 import { escapeHtml } from "../../ui/html/escape.js";
 
-export function secureHtmlDocument(html, { nonce, csrfToken = "" }) {
+export function secureHtmlDocument(html, { nonce, csrfToken = "", demoReadOnly = false, mustChangePassword = false }) {
   const source = String(html);
   let output = "";
   let cursor = 0;
@@ -13,6 +13,16 @@ export function secureHtmlDocument(html, { nonce, csrfToken = "" }) {
     let opening = tag.source;
     if ((tag.name === "script" || tag.name === "style") && !tag.attributes.has("nonce")) {
       opening = addAttribute(opening, `nonce="${escapeHtml(nonce)}"`);
+    }
+    if (tag.name === "form" && tag.attributes.get("method")?.toLowerCase() === "post" && demoReadOnly) {
+      const action = tag.attributes.get("action") || "";
+      const allowed = action === "/logout" || (action === "/account/password" && mustChangePassword);
+      if (!allowed) {
+        opening = addAttribute(opening, "inert aria-disabled=\"true\" data-demo-disabled=\"true\"");
+      }
+    }
+    if (tag.name === "a" && demoReadOnly && isBlockedDemoDownload(tag.attributes.get("href") || "")) {
+      opening = addAttribute(opening, "hidden data-demo-blocked-download=\"true\"");
     }
     output += opening;
     if (tag.name === "form" && tag.attributes.get("method")?.toLowerCase() === "post" && csrfToken) {
@@ -27,6 +37,16 @@ export function secureHtmlDocument(html, { nonce, csrfToken = "" }) {
     cursor = tag.end;
   }
   return output;
+}
+
+function isBlockedDemoDownload(href) {
+  const path = String(href).split("?", 1)[0];
+  return path === "/documents/export.csv"
+    || path === "/api/document-snapshot/export"
+    || /^\/document-snapshot-exports\/[^/]+\/rows$/.test(path)
+    || /^\/sets\/\d+\/export(?:\.csv)?$/.test(path)
+    || /^\/disposal-batches\/\d+\/export\.csv$/.test(path)
+    || /^\/document-import-jobs\/\d+\/failures\.csv$/.test(path);
 }
 
 export function scanHtmlOpeningTags(html) {

@@ -4,7 +4,7 @@ import {
   constantTimeEqual
 } from "../platform/crypto/encoding.js";
 import { parseCookies } from "../platform/http/cookies.js";
-import { permissionFlags, PERMISSION_KEYS } from "../permissions.js";
+import { ACCESS_MODES, permissionFlags, PERMISSION_KEYS } from "../permissions.js";
 import { normalizeRole } from "./shared.js";
 
 export const SESSION_COOKIE = "hanlim_session";
@@ -104,6 +104,9 @@ export async function readSession(request, env) {
       sessionEpoch: currentSessionEpoch,
       roleTemplateKey: user.role_template_key || null,
       roleTemplateLabel: user.role_template_label || null,
+      accessMode: user.access_mode === ACCESS_MODES.DEMO_READONLY
+        ? ACCESS_MODES.DEMO_READONLY
+        : ACCESS_MODES.STANDARD,
       ...permissionFlags(user)
     };
   } catch {

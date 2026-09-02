@@ -1,16 +1,16 @@
 import { getDocumentCapacity, getDocumentQualitySummary } from "../domains/documents/index.js";
 import { getAppUsers } from "../domains/identity/index.js";
 import { getSearchProjectionState } from "../domains/search/index.js";
-import { hasPermission, PERMISSIONS } from "../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../permissions.js";
 
 const EXPECTED_CORE_MIGRATION = "0048_core_search_projection.sql";
 
 export async function loadAdminDashboardReadModel(env, session) {
-  const canViewAudit = hasPermission(session, PERMISSIONS.VIEW_AUDIT);
+  const canViewAudit = hasReadPermission(session, PERMISSIONS.VIEW_AUDIT);
   const [users, quality, capacity, readiness] = await Promise.all([
-    hasPermission(session, PERMISSIONS.MANAGE_USERS) ? getAppUsers(env) : Promise.resolve([]),
-    hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS) ? getDocumentQualitySummary(env) : Promise.resolve(null),
-    hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS) ? getDocumentCapacity(env) : Promise.resolve(null),
+    hasReadPermission(session, PERMISSIONS.MANAGE_USERS) ? getAppUsers(env) : Promise.resolve([]),
+    hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS) ? getDocumentQualitySummary(env) : Promise.resolve(null),
+    hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS) ? getDocumentCapacity(env) : Promise.resolve(null),
     canViewAudit ? loadOperationalReadinessReadModel(env) : Promise.resolve(null)
   ]);
 

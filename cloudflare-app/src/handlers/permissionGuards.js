@@ -1,18 +1,18 @@
 import { accessDeniedPage } from "../views/authViews.js";
-import { hasAnyPermission, hasPermission, PERMISSIONS, sessionHasManagementAccess } from "../permissions.js";
+import { hasAnyPermission, hasReadPermission, PERMISSIONS, sessionHasManagementAccess } from "../permissions.js";
 
 export function requirePermission(session, permission) {
   const required = String(permission || "").split("+").map((part) => part.trim()).filter(Boolean);
   if (!required.length) return accessDeniedPage(session);
-  return required.every((part) => hasPermission(session, part)) ? null : accessDeniedPage(session);
+  return required.every((part) => hasReadPermission(session, part)) ? null : accessDeniedPage(session);
 }
 
 export function requireManagementAccess(session) {
-  return sessionHasManagementAccess(session) ? null : accessDeniedPage(session);
+  return session?.demoReadAuthorized || sessionHasManagementAccess(session) ? null : accessDeniedPage(session);
 }
 
 export function requireAnyPermission(session, permissions) {
-  return hasAnyPermission(session, permissions) ? null : accessDeniedPage(session);
+  return session?.demoReadAuthorized || hasAnyPermission(session, permissions) ? null : accessDeniedPage(session);
 }
 
 export const requireManageDocuments = (session) => requirePermission(session, PERMISSIONS.MANAGE_DOCUMENTS);

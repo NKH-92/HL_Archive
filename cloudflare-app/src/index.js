@@ -19,6 +19,7 @@ import {
 } from "./app/routeRegistry.js";
 import { createRequestD1Environment } from "./platform/d1/requestGateway.js";
 import { D1LikePatternTooLongError } from "./platform/d1/likePattern.js";
+import { isDemoReadOnly } from "./permissions.js";
 import {
   runBoundedSearchMaintenance,
   syncChangedSearchDocuments,
@@ -195,6 +196,16 @@ async function route(request, env, effects = {}) {
   // 기본 비밀번호를 사용하는 동안에는 비밀번호 변경 외의 기능으로 진입할 수 없다.
   if (session.mustChangePassword && path !== "/account/password") {
     return redirect("/account/password?required=1");
+  }
+
+  // 시연 계정은 서버에서 모든 업무 POST를 차단한다. 최초 로그인 직후의 강제
+  // 비밀번호 변경만 허용하며, 로그아웃은 위에서 별도로 처리했다.
+  if (
+    isDemoReadOnly(session)
+    && request.method === "POST"
+    && !(path === "/account/password" && session.mustChangePassword)
+  ) {
+    return errorPage("시연 및 조회용 계정에서는 내용을 수정할 수 없습니다.", session, 403);
   }
 
   return routeAuthenticatedRequest(request, env, session, url, path, effects);

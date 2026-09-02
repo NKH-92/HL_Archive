@@ -527,6 +527,7 @@
 
       // 검색 결과 클릭 학습 (아이디어 8): 클릭된 문서를 검색어와 함께 집계한다.
       document.addEventListener('click', function (event) {
+        if (document.body?.dataset.accessMode === 'demo_readonly') return;
         var target = event.target instanceof Element ? event.target : null;
         var link = target && target.closest ? target.closest('[data-doc-click]') : null;
         if (!link) return;

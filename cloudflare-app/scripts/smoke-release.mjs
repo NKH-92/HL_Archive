@@ -98,7 +98,10 @@ export async function runReleaseSmoke({
   password,
   adminUsername = "",
   adminPassword = "",
+  demoUsername = "",
+  demoPassword = "",
   requireAdmin = false,
+  requireDemoReadonly = false,
   requireSessionEpochCompatibility = false,
   requireReadiness = false,
   expectedWorkerVersion = "",
@@ -119,6 +122,9 @@ export async function runReleaseSmoke({
   }
   if (!publicOnly && requireAdmin && (!adminUsername || !adminPassword)) {
     throw new Error("관리자 smoke에는 SMOKE_ADMIN_USERNAME, SMOKE_ADMIN_PASSWORD가 필요합니다.");
+  }
+  if (!publicOnly && requireDemoReadonly && (!demoUsername || !demoPassword)) {
+    throw new Error("시연 조회 전용 smoke에는 SMOKE_DEMO_USERNAME, SMOKE_DEMO_PASSWORD가 필요합니다.");
   }
 
   const origin = target.origin;
@@ -244,8 +250,48 @@ export async function runReleaseSmoke({
     }
     summary.adminSettings = adminResponse.status;
   }
+  if (requireDemoReadonly) {
+    summary.demoReadonly = await verifyDemoReadonlySurface({
+      origin,
+      username: demoUsername,
+      password: demoPassword,
+      fetchImpl: smokeFetch
+    });
+  }
 
   return Object.freeze(summary);
+}
+
+async function verifyDemoReadonlySurface({ origin, username, password, fetchImpl }) {
+  const cookie = await authenticateSmokeUser({
+    origin, username, password, returnUrl: "/app", label: "시연 조회 전용 smoke 계정", fetchImpl
+  });
+  const screens = [
+    "/app", "/documents/new", "/documents/import", "/document-import-jobs",
+    "/document-snapshots", "/sets/new", "/racks/configure", "/admin/settings", "/admin/audit"
+  ];
+  let csrfToken = "";
+  for (const path of screens) {
+    const response = await fetchImpl(`${origin}${path}`, { headers: { Cookie: cookie }, redirect: "manual" });
+    const html = await response.text();
+    if (response.status !== 200 || !html.includes("시연 및 조회용") || !html.includes('data-access-mode="demo_readonly"')) {
+      throw new Error(`시연 조회 화면 smoke 실패(path=${path}, status=${response.status})`);
+    }
+    if (!csrfToken) csrfToken = /<meta name="csrf-token" content="([^"]+)"/.exec(html)?.[1] || "";
+  }
+  for (const path of ["/documents/export.csv", "/api/document-snapshot/export", "/api/search-index"]) {
+    const response = await fetchImpl(`${origin}${path}`, { headers: { Cookie: cookie }, redirect: "manual" });
+    if (response.status !== 403) throw new Error(`시연 다운로드 차단 smoke 실패(path=${path}, status=${response.status})`);
+  }
+  const body = new URLSearchParams({ csrf_token: csrfToken, q: "release-smoke", documentId: "1" });
+  const mutation = await fetchImpl(`${origin}/api/search-click`, {
+    method: "POST",
+    headers: { Cookie: cookie, Origin: origin, "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    redirect: "manual"
+  });
+  if (mutation.status !== 403) throw new Error(`시연 업무 POST 차단 smoke 실패(status=${mutation.status})`);
+  return Object.freeze({ screens: screens.length, blockedDownloads: 3, blockedMutation: mutation.status });
 }
 
 export async function verifyReleasePublicSurface({
@@ -433,7 +479,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     password: process.env.SMOKE_PASSWORD,
     adminUsername: process.env.SMOKE_ADMIN_USERNAME,
     adminPassword: process.env.SMOKE_ADMIN_PASSWORD,
+    demoUsername: process.env.SMOKE_DEMO_USERNAME,
+    demoPassword: process.env.SMOKE_DEMO_PASSWORD,
     requireAdmin: process.env.SMOKE_REQUIRE_ADMIN === "1",
+    requireDemoReadonly: process.env.SMOKE_REQUIRE_DEMO_READONLY === "1",
     requireSessionEpochCompatibility: process.env.SMOKE_REQUIRE_SESSION_EPOCH_COMPAT === "1",
     requireReadiness: process.env.SMOKE_REQUIRE_READINESS === "1",
     expectedWorkerVersion: process.env.SMOKE_EXPECTED_WORKER_VERSION || "",

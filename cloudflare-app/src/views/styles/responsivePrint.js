@@ -11,6 +11,7 @@ export function responsivePrintStyles() {
       .nav-user { margin: auto 0 0; flex-direction: column; align-items: stretch; gap: var(--sp-1); padding-top: var(--sp-2); border-top: 1px solid var(--line); }
       .session-pill { border-radius: var(--r-md); white-space: normal; text-align: center; }
       .topbar ~ .app-shell { width: auto; max-width: 1440px; margin-left: calc(240px + var(--sp-6)); margin-right: var(--sp-6); }
+      .topbar ~ .demo-readonly-banner { margin-left: 240px; }
       .bulk-bar { left: calc(240px + var(--sp-6)); right: max(var(--sp-6), calc(100vw - 240px - var(--sp-6) - 1440px)); }
       .drawer-close, .nav-scrim { display: none; }
     }
@@ -63,6 +64,8 @@ export function responsivePrintStyles() {
       .set-print-signatures span { flex: 1; height: 28px; border-bottom: 1px solid var(--gray-700); }
       .set-print-page { position: fixed; right: 0; bottom: 0; color: var(--gray-500); font-size: 11px; }
       .set-print-page span::after { content: counter(page); }
+      body[data-access-mode="demo_readonly"] > * { display: none !important; }
+      body[data-access-mode="demo_readonly"]::after { content: "시연 및 조회용 계정에서는 인쇄할 수 없습니다."; display: block; padding: 24px; color: var(--ink); font-size: 16px; font-weight: 700; }
     }
     @media (max-width: 760px) {
       .app-shell { width: calc(100% - var(--sp-6)); padding-top: var(--sp-3); }

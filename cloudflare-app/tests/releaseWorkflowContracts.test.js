@@ -12,6 +12,7 @@ const actionWorkflows = await Promise.all([
   "prepare-fresh-core.yml",
   "provision-admin.yml",
   "provision-users.yml",
+  "provision-demo-reviewer.yml",
   "remediate-main-admin.yml",
   "branch-hygiene.yml"
 ].map((name) => readFile(new URL(`../../.github/workflows/${name}`, import.meta.url), "utf8")));
@@ -26,6 +27,7 @@ const guardedD1Scripts = await Promise.all([
   "migrate-remote-guarded.mjs",
   "provision-admin-guarded.mjs",
   "provision-users-guarded.mjs",
+  "provision-demo-reviewer-guarded.mjs",
   "release-smoke-principal.mjs",
   "remediate-main-admin-guarded.mjs"
 ].map(async (name) => [name, await readFile(new URL(`../scripts/${name}`, import.meta.url), "utf8")]));

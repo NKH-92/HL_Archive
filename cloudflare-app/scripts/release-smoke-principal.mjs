@@ -77,7 +77,8 @@ function usernames(id) {
   const suffix = id.toLowerCase().replace(/[^a-z0-9]/g, "").slice(-32);
   return {
     reader: `release-reader-${suffix}@hanlim.internal`,
-    admin: `release-admin-${suffix}@hanlim.internal`
+    admin: `release-admin-${suffix}@hanlim.internal`,
+    demo: `release-demo-${suffix}@hanlim.internal`
   };
 }
 
@@ -95,11 +96,11 @@ function cleanupSql() {
   `;
 }
 
-function insertSql({ actor, reader, admin, readerRecord, adminRecord }) {
+function insertSql({ actor, reader, admin, demo, readerRecord, adminRecord, demoRecord }) {
   return `
     INSERT INTO app_users (
       username, display_name, password_salt, password_hash, status,
-      approved_at, approved_by, role, must_change_password,
+      approved_at, approved_by, role, role_template_key, must_change_password,
       expires_at,
       can_manage_documents, can_move_documents, can_manage_disposals,
       can_manage_sets, can_manage_masters, can_manage_users, can_view_audit,
@@ -107,13 +108,13 @@ function insertSql({ actor, reader, admin, readerRecord, adminRecord }) {
     ) VALUES (
       ${sqlText(reader.username)}, 'Release smoke reader',
       ${sqlText(readerRecord.salt)}, ${sqlText(readerRecord.hash)}, 'approved',
-      CURRENT_TIMESTAMP, ${sqlText(actor)}, 'User', 0,
+      CURRENT_TIMESTAMP, ${sqlText(actor)}, 'User', 'viewer', 0,
       datetime(CURRENT_TIMESTAMP, '+45 minutes'),
       0, 0, 0, 0, 0, 0, 0, 0, CURRENT_TIMESTAMP
     );
     INSERT INTO app_users (
       username, display_name, password_salt, password_hash, status,
-      approved_at, approved_by, role, must_change_password,
+      approved_at, approved_by, role, role_template_key, must_change_password,
       expires_at,
       can_manage_documents, can_move_documents, can_manage_disposals,
       can_manage_sets, can_manage_masters, can_manage_users, can_view_audit,
@@ -121,9 +122,23 @@ function insertSql({ actor, reader, admin, readerRecord, adminRecord }) {
     ) VALUES (
       ${sqlText(admin.username)}, 'Release smoke manager',
       ${sqlText(adminRecord.salt)}, ${sqlText(adminRecord.hash)}, 'approved',
-      CURRENT_TIMESTAMP, ${sqlText(actor)}, 'User', 0,
+      CURRENT_TIMESTAMP, ${sqlText(actor)}, 'User', NULL, 0,
       datetime(CURRENT_TIMESTAMP, '+45 minutes'),
       0, 0, 0, 0, 0, 1, 0, 0, CURRENT_TIMESTAMP
+    );
+    INSERT INTO app_users (
+      username, display_name, password_salt, password_hash, status,
+      approved_at, approved_by, role, role_template_key, access_mode, must_change_password,
+      expires_at,
+      can_manage_documents, can_move_documents, can_manage_disposals,
+      can_manage_sets, can_manage_masters, can_manage_users, can_view_audit,
+      can_apply_document_snapshots, updated_at
+    ) VALUES (
+      ${sqlText(demo.username)}, 'Release smoke demo reviewer',
+      ${sqlText(demoRecord.salt)}, ${sqlText(demoRecord.hash)}, 'approved',
+      CURRENT_TIMESTAMP, ${sqlText(actor)}, 'User', 'viewer', 'demo_readonly', 0,
+      datetime(CURRENT_TIMESTAMP, '+45 minutes'),
+      0, 0, 0, 0, 0, 0, 0, 0, CURRENT_TIMESTAMP
     );
   `;
 }
@@ -201,11 +216,13 @@ export async function runSmokePrincipal({
   }
   const credentials = {
     reader: { username: names.reader, password: randomBytes(24).toString("base64url") },
-    admin: { username: names.admin, password: randomBytes(24).toString("base64url") }
+    admin: { username: names.admin, password: randomBytes(24).toString("base64url") },
+    demo: { username: names.demo, password: randomBytes(24).toString("base64url") }
   };
-  const [readerRecord, adminRecord] = await Promise.all([
+  const [readerRecord, adminRecord, demoRecord] = await Promise.all([
     createReleaseSmokeCompatibilityPasswordRecord(credentials.reader.password),
-    createReleaseSmokeCompatibilityPasswordRecord(credentials.admin.password)
+    createReleaseSmokeCompatibilityPasswordRecord(credentials.admin.password),
+    createReleaseSmokeCompatibilityPasswordRecord(credentials.demo.password)
   ]);
   const directory = mkdtempSync(path.join(tmpdir(), "hanlim-release-smoke-"));
   try {
@@ -214,8 +231,10 @@ export async function runSmokePrincipal({
       actor,
       reader: credentials.reader,
       admin: credentials.admin,
+      demo: credentials.demo,
       readerRecord,
-      adminRecord
+      adminRecord,
+      demoRecord
     }), { encoding: "utf8", mode: 0o600 });
     const provisioned = runWranglerCaptured({
       appRoot: APP_ROOT,
@@ -252,7 +271,7 @@ export async function runSmokePrincipal({
       return { ok: false, errors: ["Release smoke principal response is invalid."] };
     }
     const count = resultCount(payload, "provisioned");
-    if (count !== 2) {
+    if (count !== 3) {
       await runSmokePrincipal({ action: "cleanup", environment, spawn, execPath });
       return { ok: false, errors: ["Release smoke principal verification failed."] };
     }

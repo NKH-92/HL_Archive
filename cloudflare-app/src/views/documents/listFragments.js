@@ -2,7 +2,7 @@
 
 import { escapeHtml } from "../../ui/html/escape.js";
 import { FREE_TIER_BUDGET } from "../../config.js";
-import { hasPermission, PERMISSIONS } from "../../permissions.js";
+import { hasReadPermission, PERMISSIONS } from "../../permissions.js";
 import { alertDanger, alertWarning, paginationNav } from "../layout.js";
 import { documentListUrl } from "./urlHelpers.js";
 
@@ -69,7 +69,7 @@ export function bulkActionBar(action = "/documents/disposal/process", filters = 
 
 export function documentToolbar(session) {
   const actions = [];
-  if (hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
     actions.push(`<a class="button secondary" href="/documents/export.csv"><i class="fa-solid fa-download" aria-hidden="true"></i>CSV 내보내기</a>`);
     actions.push(`<a class="button secondary" href="/documents/import"><i class="fa-solid fa-file-excel" aria-hidden="true"></i>엑셀 대장 동기화</a>`);
     actions.push(`<a class="button action-button" href="/documents/new"><i class="fa-solid fa-plus" aria-hidden="true"></i>문서 등록</a>`);

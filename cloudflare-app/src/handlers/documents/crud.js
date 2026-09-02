@@ -26,7 +26,7 @@ import {
   documentRevisionPage
 } from "../../views/documentViews.js";
 import { accessDeniedPage, errorPage, notFoundPage } from "../../views/authViews.js";
-import { hasPermission, PERMISSIONS } from "../../permissions.js";
+import { hasPermission, hasReadPermission, PERMISSIONS } from "../../permissions.js";
 import { jsonResponse, redirect } from "../../platform/http/responses.js";
 import { logError } from "../../platform/observability/logger.js";
 import { clean } from "../../shared/text/normalize.js";
@@ -116,8 +116,8 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
       return notFoundPage(session);
     }
 
-    const canViewAudit = hasPermission(session, PERMISSIONS.VIEW_AUDIT);
-    const canViewMovements = canViewAudit || hasPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
+    const canViewAudit = hasReadPermission(session, PERMISSIONS.VIEW_AUDIT);
+    const canViewMovements = canViewAudit || hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
     const [tags, disposalLogs, auditLogs, movements, revisionHistory, racks, regions] = await Promise.all([
       getDocumentTags(env, id),
       getDisposalLogs(env, id),

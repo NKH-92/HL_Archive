@@ -59,7 +59,8 @@
     "0056_excel_snapshot_zone_cursor.sql": "604c4dd5fe9833a274582d8b75f71f06a9236ecb48adfc9a20fc911d17de6109",
     "0057_nullable_excel_revision_and_na_defaults.sql": "6600efdfe76356930b1aad965c5cba95ff119a772d686c7850daf6281fbe3070",
     "0058_excel_auto_categories.sql": "ef937d368e0946ccc3e410b06ea03e646ab0f6c4719a6ced44b749b63a2181a7",
-    "0059_excel_revision_date_precision.sql": "c2dcc01d16fc80cda902d06382e285c0dcaade681188be06a8a8f4b0afca4ef7"
+    "0059_excel_revision_date_precision.sql": "c2dcc01d16fc80cda902d06382e285c0dcaade681188be06a8a8f4b0afca4ef7",
+    "0060_demo_readonly_access.sql": "c0401838b8e16e53aead73c2246a129908d60757e79908a5dab594db30a035fa"
   },
   "schema": {
     "tables": [
@@ -131,6 +132,8 @@
       "trg_category_sync_version_delete",
       "trg_category_sync_version_insert",
       "trg_category_sync_version_update",
+      "trg_demo_readonly_user_insert_guard",
+      "trg_demo_readonly_user_update_guard",
       "trg_disposal_logs_no_update",
       "trg_document_audit_logs_no_delete",
       "trg_document_audit_logs_no_update",

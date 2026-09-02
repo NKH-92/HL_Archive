@@ -205,7 +205,7 @@ test("release smoke provisioning accepts Wrangler progress text before JSON", as
         if (sql.includes("COUNT(*) AS provisioned")) {
           return {
             status: 0,
-            stdout: JSON.stringify([{ results: [{ provisioned: 2 }] }])
+            stdout: JSON.stringify([{ results: [{ provisioned: 3 }] }])
           };
         }
         return {
@@ -215,12 +215,13 @@ test("release smoke provisioning accepts Wrangler progress text before JSON", as
       }
     });
     assert.equal(result.ok, true);
-    assert.equal(result.provisioned, 2);
+    assert.equal(result.provisioned, 3);
     assert.equal(calls.length, 3);
     assert.ok(calls.every(({ args }) => args.includes(CORE_ID)));
     assert.doesNotMatch(provisionSql, /pbkdf2-sha256\$/);
     const credentials = JSON.parse(await readFile(credentialPath, "utf8"));
     assert.match(credentials.reader.username, /^release-reader-/);
+    assert.match(credentials.demo.username, /^release-demo-/);
     assert.ok(credentials.reader.password.length >= 6);
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -233,11 +234,12 @@ test("release smoke 계정은 TTL과 최소 사용자관리 권한만 가지며 
   assert.match(source, /DELETE FROM app_users WHERE approved_by LIKE 'release-smoke:%'/);
   assert.equal(
     [...source.matchAll(/datetime\(CURRENT_TIMESTAMP, '\+45 minutes'\)/g)].length,
-    2
+    3
   );
   assert.match(
     source,
-    /'Release smoke manager'[\s\S]*?'User', 0,[\s\S]*?0, 0, 0, 0, 0, 1, 0, 0, CURRENT_TIMESTAMP/
+    /'Release smoke manager'[\s\S]*?'User', NULL, 0,[\s\S]*?0, 0, 0, 0, 0, 1, 0, 0, CURRENT_TIMESTAMP/
   );
+  assert.match(source, /'Release smoke demo reviewer'[\s\S]*?'viewer', 'demo_readonly', 0/);
   assert.doesNotMatch(source, /'Release smoke manager'[\s\S]*?'Admin'/);
 });

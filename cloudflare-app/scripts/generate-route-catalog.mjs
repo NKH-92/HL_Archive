@@ -21,8 +21,8 @@ function header() {
 }
 
 function routeTable() {
-  const rows = ROUTES.map((item) => `| \`${item.id}\` | \`${item.method}\` | \`${item.path}\` | ${item.auth} | ${guard(item)} |`).join("\n");
-  return `## Routes\n\n| route id | method | path | auth | permission/policy |\n|---|---|---|---|---|\n${rows}\n\n`;
+  const rows = ROUTES.map((item) => `| \`${item.id}\` | \`${item.method}\` | \`${item.path}\` | ${item.auth} | ${guard(item)} | \`${item.demoAccess}\` |`).join("\n");
+  return `## Routes\n\n| route id | method | path | auth | permission/policy | demo access |\n|---|---|---|---|---|---|\n${rows}\n\n`;
 }
 
 function permissionTable() {

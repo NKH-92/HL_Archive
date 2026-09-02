@@ -392,11 +392,11 @@ export function qaPage({ session, support = {} }) {
     ["/app", "fa-magnifying-glass", "문서 찾기", "문서번호·문서명·보관 위치로 검색합니다."],
     ["/floor-plan", "fa-location-dot", "보관 위치 확인", "구역과 랙 배치를 도면에서 확인합니다."]
   ];
-  if (capabilities.canManageDocuments) {
+  if (capabilities.canPreviewDocuments) {
     tasks.push(["/documents/new", "fa-file-circle-plus", "문서 등록", "문서 정보와 보관 위치를 입력합니다."]);
     tasks.push(["/documents/import", "fa-file-excel", "엑셀 대장 동기화", "최신 대장을 검증한 뒤 변경 사항을 반영합니다."]);
   }
-  if (capabilities.canManageDisposals) {
+  if (capabilities.canPreviewDisposals) {
     tasks.push(["/documents/disposal", "fa-box-archive", "문서 폐기", "폐기 대상을 필터링하고 선택해 처리합니다."]);
   }
   if (capabilities.canOpenManagement) {

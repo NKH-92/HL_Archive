@@ -26,11 +26,23 @@ export const PERMISSION_LABELS = Object.freeze({
 // 아래 값은 "템플릿을 쓰지 않는 개별 예외" 선택을 나타내는 화면·핸들러 공용 표식이다.
 export const CUSTOM_ROLE_TEMPLATE_KEY = "custom";
 
+export const ACCESS_MODES = Object.freeze({
+  STANDARD: "standard",
+  DEMO_READONLY: "demo_readonly"
+});
+
+export function isDemoReadOnly(session) {
+  return session?.accessMode === ACCESS_MODES.DEMO_READONLY;
+}
+
 const permissionSet = new Set(PERMISSION_KEYS);
 
 // 기존 Admin은 하위 호환을 위해 플래그 값과 관계없이 모든 권한을 가진다.
 export function hasPermission(session, permission) {
   if (!session || !permissionSet.has(permission)) {
+    return false;
+  }
+  if (isDemoReadOnly(session)) {
     return false;
   }
   if (session.role === "Admin") {
@@ -39,12 +51,19 @@ export function hasPermission(session, permission) {
   return session.role === "User" && readPermissionFlag(session[permission]);
 }
 
+// 시연 계정의 조회 권한은 라우트 레지스트리에서 허용한 GET 요청에만 일시적으로 부여한다.
+// 일반 권한과 분리해 도메인 mutation이 이 값을 쓰지 못하게 한다.
+export function hasReadPermission(session, permission) {
+  return Boolean(isDemoReadOnly(session) && session?.demoReadAuthorized)
+    || hasPermission(session, permission);
+}
+
 export function hasAnyPermission(session, permissions = PERMISSION_KEYS) {
   return Array.from(permissions || []).some((permission) => hasPermission(session, permission));
 }
 
 export function sessionHasManagementAccess(session) {
-  return hasAnyPermission(session, PERMISSION_KEYS);
+  return Boolean(session?.demoReadAuthorized) || hasAnyPermission(session, PERMISSION_KEYS);
 }
 
 export function permissionFlags(source = {}) {

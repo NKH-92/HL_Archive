@@ -1,5 +1,6 @@
 import { bytesToBase64Url } from "../crypto/encoding.js";
 import { escapeHtml } from "../../ui/html/escape.js";
+import { isDemoReadOnly } from "../../permissions.js";
 
 export function createRenderContext(session = null) {
   const nonce = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(16)));
@@ -7,6 +8,8 @@ export function createRenderContext(session = null) {
   return Object.freeze({
     nonce,
     csrfToken,
+    demoReadOnly: isDemoReadOnly(session),
+    mustChangePassword: Boolean(session?.mustChangePassword),
     nonceAttribute: `nonce="${escapeHtml(nonce)}"`,
     csrfInput: csrfToken ? `<input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">` : ""
   });

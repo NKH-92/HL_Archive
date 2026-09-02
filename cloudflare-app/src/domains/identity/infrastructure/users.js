@@ -135,6 +135,7 @@ export async function getAppUsers(env) {
       security_review_required,
       session_epoch,
       team,
+      access_mode,
       role_template_key,
       row_version,
       ${MATCHED_ROLE_TEMPLATE_LABEL} AS role_template_label,
@@ -167,6 +168,7 @@ export async function getAppUser(env, id) {
       security_review_required,
       session_epoch,
       team,
+      access_mode,
       role_template_key,
       row_version,
       ${MATCHED_ROLE_TEMPLATE_LABEL} AS role_template_label,
@@ -233,6 +235,7 @@ export async function updateUserPermissions(env, id, values, actor) {
   if (
     !user
     || user.role !== "User"
+    || user.access_mode === "demo_readonly"
     || Number(user.security_review_required || 0) === 1
     || !Number.isSafeInteger(expectedRowVersion)
     || expectedRowVersion < 1
@@ -256,7 +259,7 @@ export async function updateUserPermissions(env, id, values, actor) {
     return { ok: true, unchanged: true };
   }
 
-  const guardSql = "FROM app_users WHERE id = ? AND role = 'User' AND security_review_required = 0 AND row_version = ?";
+  const guardSql = "FROM app_users WHERE id = ? AND role = 'User' AND access_mode = 'standard' AND security_review_required = 0 AND row_version = ?";
   const guardBinds = [user.id, expectedRowVersion];
   const audit = createSystemAuditStatement(env, {
     entityType: "user",
@@ -285,7 +288,7 @@ export async function updateUserPermissions(env, id, values, actor) {
         ${PERMISSION_KEYS.map((permission) => `${permission} = ?`).join(",\n        ")},
         row_version = row_version + 1,
         updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND role = 'User' AND security_review_required = 0 AND row_version = ?
+    WHERE id = ? AND role = 'User' AND access_mode = 'standard' AND security_review_required = 0 AND row_version = ?
   `).bind(roleTemplateKey, ...valuesToBind, user.id, expectedRowVersion);
   const plan = createUserPermissionMutationPlan(audit, update, `app_users:${user.id}:${expectedRowVersion}`);
 

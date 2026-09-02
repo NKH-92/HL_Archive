@@ -160,6 +160,10 @@ src/shared/                  업무 의미가 없는 text, CSV, pagination, coer
     강제 상태만 만들며, 감사 INSERT와 계정 INSERT를 같은 D1 batch에서 실행한다. Admin 승격과 추가 권한은 생성 요청과
     분리한다.
     release smoke 계정은 45분 TTL과 필요한 단일 권한만 가지며 다음 release와 Cron janitor가 누수를 제거한다.
+25. **시연 조회 모드의 이중 경계**: `app_users.access_mode = 'demo_readonly'`는 일반 역할 템플릿과 분리한다.
+    세션은 매 요청 DB 값을 재검증하고, 인증 라우트 descriptor의 `demoAccess`가 허용한 GET에만 read guard를 연다.
+    모든 업무 POST와 export/raw GET은 중앙 라우터에서 닫으며 HTML의 inert form·download 숨김은 보조 안내다.
+    migration 0060 trigger는 이 모드의 User·viewer·권한 0 불변조건과 access mode 해제를 DB에서도 거부한다.
 25. **운영 version 격리**: 기본 Wrangler 환경은 운영 Worker·D1을 가리키지 않고 preview URL을 만들지 않는다.
     배포 전에 현재 100% traffic version을 기록하고 guarded deploy로 production에 직접 배포한다. canonical
     운영 URL smoke가 실패하면 기록한 version으로 rollback하고 다시 검증한다.

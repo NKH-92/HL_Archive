@@ -1,7 +1,7 @@
 // 관리자 화면: 관리 설정·사용자 승인·분류/태그·비밀번호.
 
 import { escapeHtml } from "../ui/html/escape.js";
-import { hasPermission, PERMISSIONS } from "../permissions.js";
+import { hasReadPermission, isDemoReadOnly, PERMISSIONS } from "../permissions.js";
 import { PASSWORD_POLICY } from "../domains/identity/index.js";
 import { alertDanger, alertWarning, emptyState, page, sectionHeader } from "./layout.js";
 
@@ -14,12 +14,12 @@ export function adminDashboardPage({ session, pendingCount, quality = null, capa
   const capacityAttention = capacity && capacity.level !== "ok" ? 1 : 0;
   const attentionCount = pending + qualityIssues + searchAttention + capacityAttention;
   const groups = [];
-  if (hasPermission(session, PERMISSIONS.MANAGE_USERS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_USERS)) {
     groups.push(managementGroup("사용자 및 접근", "계정 승인과 사용 권한을 관리합니다.", [
       ["/admin/settings", "fa-users-gear", "사용자 관리", `${pending}건 승인 대기`]
     ]));
   }
-  if (hasPermission(session, PERMISSIONS.MANAGE_MASTERS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_MASTERS)) {
     groups.push(managementGroup("문서고 기준정보", "보관 위치와 검색 분류 기준을 관리합니다.", [
       ["/racks", "fa-box-archive", "랙 관리", "랙 목록과 위치 확인"],
       ["/racks/configure", "fa-table-cells-large", "랙 구성", "구역별 랙 수 조정"],
@@ -28,36 +28,36 @@ export function adminDashboardPage({ session, pendingCount, quality = null, capa
     ]));
   }
   const dataLinks = [];
-  if (hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
     dataLinks.push(["/documents/import", "fa-file-excel", "엑셀 대장 동기화", "엑셀 전체 동기화·검증·인쇄용 추출"]);
     dataLinks.push(["/documents/new", "fa-file-circle-plus", "문서 등록", "신규 문서를 현재 리스트에 즉시 등록"]);
   }
-  if (hasPermission(session, PERMISSIONS.VIEW_AUDIT)) {
+  if (hasReadPermission(session, PERMISSIONS.VIEW_AUDIT)) {
     dataLinks.push(["/admin/audit", "fa-list-check", "감사 이력", "전역 변경 이력"]);
   }
-  if (hasPermission(session, PERMISSIONS.MOVE_DOCUMENTS) || hasPermission(session, PERMISSIONS.VIEW_AUDIT)) {
+  if (hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS) || hasReadPermission(session, PERMISSIONS.VIEW_AUDIT)) {
     dataLinks.push(["/admin/movements", "fa-location-crosshairs", "위치 이동 이력", "문서 위치 변경 조회"]);
   }
   if (dataLinks.length) {
     groups.push(managementGroup("데이터 및 감사", "데이터와 변경 증적을 확인합니다.", dataLinks));
   }
   const advancedLinks = [];
-  if (hasPermission(session, PERMISSIONS.MANAGE_SETS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_SETS)) {
     advancedLinks.push(["/sets", "fa-layer-group", "준비 문서 세트", "문서 묶음 생성·잠금·인쇄"]);
   }
-  if (hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
+  if (hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)) {
     advancedLinks.push(["/document-import-jobs", "fa-file-csv", "CSV 가져오기", "이전 방식의 CSV 문서 등록 작업"]);
     advancedLinks.push(["/admin/data-quality", "fa-list-check", "데이터 품질", "문제 문서 작업 목록"]);
   }
-  if (hasPermission(session, PERMISSIONS.VIEW_AUDIT)) {
+  if (hasReadPermission(session, PERMISSIONS.VIEW_AUDIT)) {
     advancedLinks.push(["/admin/search-report", "fa-chart-simple", "검색 리포트", "자주 찾는·실패 검색어"]);
   }
   if (advancedLinks.length) {
     groups.push(managementGroup("관리자 고급 도구", "일상 업무에서 분리한 전문 관리 기능입니다.", advancedLinks, true));
   }
-  const heroAction = pending && hasPermission(session, PERMISSIONS.MANAGE_USERS)
+  const heroAction = pending && hasReadPermission(session, PERMISSIONS.MANAGE_USERS)
     ? `<a class="button action-button" href="/admin/settings">승인 요청 확인</a>`
-    : qualityIssues && hasPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)
+    : qualityIssues && hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS)
       ? `<a class="button action-button" href="/admin/data-quality">품질 작업 보기</a>`
       : "";
   return page("운영 관리", `
@@ -169,10 +169,10 @@ export function adminSettingsPage({ session, users }) {
   const approved = users.filter((u) => u.status === "approved");
   const disabled = users.filter((u) => u.status === "disabled");
   const rejected = users.filter((u) => u.status === "rejected");
-  const templateManagement = session?.role === "Admin"
+  const templateManagement = session?.role === "Admin" || isDemoReadOnly(session)
     ? `<a class="button" href="/admin/role-templates">역할 템플릿</a>`
     : "";
-  const userCreation = session?.role === "Admin"
+  const userCreation = session?.role === "Admin" || isDemoReadOnly(session)
     ? `<a class="button" href="/admin/users/new">승인 사용자 추가</a>`
     : "";
   return page("사용자 관리", `
@@ -232,6 +232,7 @@ function userRequestTable(users, session) {
 }
 
 function userRoleLabel(user) {
+  if (user.access_mode === "demo_readonly") return "시연 및 조회용";
   if (user.role === "Admin") return user.role_template_label || "시스템관리";
   return user.role_template_label || "사용자 지정";
 }
@@ -241,7 +242,7 @@ function userActions(user, session) {
   if (Number(user.security_review_required || 0) === 1) {
     return `<div class="button-group"><span class="muted">보안 검토 대상 · 일반 재승인 불가</span>${deletion}</div>`;
   }
-  const canResetPassword = session?.role === "Admin"
+  const canResetPassword = (session?.role === "Admin" || isDemoReadOnly(session))
     && Number(user.id) !== Number(session.userId)
     && user.username !== session.username
     && ["approved", "disabled"].includes(user.status);
@@ -261,7 +262,7 @@ function userActions(user, session) {
 
 // 완전삭제는 되돌릴 수 없으므로 목록에서 바로 실행하지 않고 전용 확인 화면으로 보낸다.
 function userDeleteLink(user, session) {
-  if (session?.role !== "Admin") return "";
+  if (session?.role !== "Admin" && !isDemoReadOnly(session)) return "";
   if (Number(user.id) === Number(session.userId) || user.username === session.username) return "";
   return `<a class="button danger-button sm" href="/admin/users/${user.id}/delete">완전삭제</a>`;
 }
