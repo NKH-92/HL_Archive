@@ -1,3 +1,4 @@
+import { documentLink, documentReturnTo } from "../../shared/documents/navigation.js";
 import {
   createDocument,
   disposeDocument,
@@ -35,6 +36,12 @@ import { requireManageDisposals, requireManageDocuments } from "../permissionGua
 export async function renderCreateDocument(env, session, values = {}, validation = null, title = "문서 등록") {
   const { categories, tags, slots } = await loadDocumentFormOptions(env, { activeOnly: true });
   const safeValues = { ...values, returnTo: safeDocumentReturn(values.returnTo) };
+  if (values.continuing) {
+    safeValues.categoryId = values.retainCategory && categories.some((item) => Number(item.id) === Number(values.categoryId)) ? Number(values.categoryId) : "";
+    const slot = values.retainLocation ? slots.find((item) => Number(item.id) === Number(values.rackSlotId)) : null;
+    safeValues.rackSlotId = slot ? Number(slot.id) : "";
+    safeValues.rackFace = slot && Number(slot.is_single_sided) !== 1 && values.rackFace === "B" ? "B" : "A";
+  }
 
   return documentFormPage({
     session,
@@ -58,6 +65,8 @@ export async function handleCreateDocument(request, env, session, effects = {}) 
   const form = await request.formData();
   const values = valuesFromDocumentForm(form);
   values.returnTo = safeDocumentReturn(form.get("returnTo"));
+  values.retainCategory = form.get("retainCategory") === "1";
+  values.retainLocation = form.get("retainLocation") === "1";
   const validation = await validateDocumentInputDetails(env, values);
 
   if (!validation.ok) {
@@ -76,6 +85,13 @@ export async function handleCreateDocument(request, env, session, effects = {}) 
         // Core 문서 등록은 확정된 상태다. 검색 갱신 실패는 outbox에 남겨 Cron이 재처리한다.
         logError("documents.search-index-immediate", error, { documentId: id });
       }
+    }
+    if (form.get("submitAction") === "saveAndNext") {
+      const next = new URLSearchParams({ continuing: "1" });
+      if (values.returnTo) next.set("returnTo", values.returnTo);
+      if (values.retainCategory) { next.set("retainCategory", "1"); next.set("categoryId", String(values.categoryId)); }
+      if (values.retainLocation) { next.set("retainLocation", "1"); next.set("rackSlotId", String(values.rackSlotId)); next.set("rackFace", values.rackFace); }
+      return redirect(`/documents/new?${next}`);
     }
     return redirect(values.returnTo ? withToast(values.returnTo, "document-created") : `/documents/${id}?toast=created`);
   } catch (error) {
@@ -108,6 +124,7 @@ async function renderEditDocumentForm(env, session, id, values, selectedTags, va
 
 export async function handleDocumentRoute(request, env, session, routeInfo, effects = {}) {
   const { id, action } = routeInfo;
+  const returnTo = documentReturnTo(new URL(request.url).searchParams.get("returnTo"));
 
   if (request.method === "GET" && action === "details") {
     // 404면 태그·이력·도면 조회를 건너 불필요한 D1 왕복을 막는다.
@@ -136,6 +153,7 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
       auditLogs,
       movements,
       revisionHistory,
+      returnTo,
       floorPlan: buildFloorPlanLayout(racks, regions)
     });
   }
@@ -163,7 +181,7 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
       env,
       session,
       id,
-      documentToFormValues(document),
+      { ...documentToFormValues(document), returnTo },
       tags.map((tag) => tag.id)
     );
   }
@@ -179,7 +197,8 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
       session,
       document,
       values: {
-      revisionNumber: "",
+        returnTo,
+        revisionNumber: "",
         revisionDate: "",
         confirmReplacement: ""
       }
@@ -194,6 +213,7 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
 
     const form = await request.formData();
     const values = {
+      returnTo: documentReturnTo(form.get("returnTo")),
       revisionNumber: clean(form.get("revisionNumber")),
       revisionDate: clean(form.get("revisionDate")),
       confirmReplacement: clean(form.get("confirmReplacement")),
@@ -212,13 +232,13 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
           });
         }
       }
-      return redirect(`/documents/${result.newDocumentId}?toast=revised`);
+      return redirect(documentLink(result.newDocumentId, "", values.returnTo, "revised"));
     }
-    if (result.replacementId) return redirect(`/documents/${result.replacementId}`);
+    if (result.replacementId) return documentRevisionPage({ session, document, values, validation: { fieldErrors: {}, formErrors: ["이 문서는 이미 개정되었습니다. 최신 내용을 별도 확인하세요."] } });
     if (result.validation) {
       return documentRevisionPage({ session, document, values, validation: result.validation });
     }
-    return errorPage(result.message, session, 400);
+    return documentRevisionPage({ session, document, values, validation: { fieldErrors: {}, formErrors: [result.message] } });
   }
 
   if (request.method === "POST" && action === "edit") {
@@ -235,7 +255,9 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
       return notFoundPage(session);
     }
 
-    const values = valuesFromDocumentForm(await request.formData());
+    const form = await request.formData();
+    const values = valuesFromDocumentForm(form);
+    values.returnTo = documentReturnTo(form.get("returnTo"));
     // 일반정보 수정에서는 위치 입력을 받지 않는다. 기존 위치를 검증·저장 값에 다시
     // 결합해 위치 변경이 반드시 전용 이동 흐름을 거치도록 한다.
     values.rackSlotId = Number(document.rack_slot_id);
@@ -263,11 +285,11 @@ export async function handleDocumentRoute(request, env, session, routeInfo, effe
 
     const result = await updateDocument(env, id, values, session, session.role);
     if (!result.ok) {
-      return errorPage(result.message, session, 400);
+      return renderEditDocumentForm(env, session, id, values, values.tagIds, result.message);
     }
     await syncSearchDocumentBestEffort(effects, id, "documents.update.search-index-immediate");
 
-    return redirect(`/documents/${id}?toast=updated`);
+    return redirect(documentLink(id, "", values.returnTo, "updated"));
   }
 
   if (request.method === "POST" && action === "dispose") {
@@ -321,7 +343,7 @@ function duplicateValidation(duplicate) {
 
 function safeDocumentReturn(value) {
   const path = clean(value);
-  return /^\/sets\/\d+$/.test(path) ? path : "";
+  return /^\/sets\/\d+$/.test(path) ? path : documentReturnTo(path);
 }
 
 function withToast(path, toast) {

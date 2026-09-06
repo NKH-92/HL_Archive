@@ -1,5 +1,6 @@
 // 문서 등록·수정 폼. 위치 선택기와 스크립트 삽입 순서를 그대로 유지한다.
 
+import { documentLink } from "../../shared/documents/navigation.js";
 import { escapeHtml } from "../../ui/html/escape.js";
 import { locationPicker, locationPickerScript } from "../documentLocationPicker.js";
 import { formValue, option, page } from "../layout.js";
@@ -41,7 +42,7 @@ export function documentFormPage({
             ${textField("documentNumber", "문서번호", formValue(values, "documentNumber", "document_number"), normalizedValidation, { required: true, mono: true })}
             ${isInformationEdit
               ? lockedField("개정번호", formValue(values, "revisionNumber", "revision_number"))
-              : textField("revisionNumber", "개정번호", formValue(values, "revisionNumber", "revision_number") || "Rev.0", normalizedValidation, { required: true })}
+              : textField("revisionNumber", "개정번호", formValue(values, "revisionNumber", "revision_number"), normalizedValidation, { required: true })}
           </div>
           ${textField("documentName", "문서명", formValue(values, "documentName", "document_name"), normalizedValidation, { required: true })}
           <label for="field-categoryId">대분류 <em>*</em>
@@ -62,16 +63,6 @@ export function documentFormPage({
           ${fieldError("tagIds", normalizedValidation)}
         </fieldset>
 
-        <fieldset class="form-section">
-          <legend>보존 정보</legend>
-          <div class="form-grid two-column">
-            ${isInformationEdit
-              ? lockedField("제·개정일", formValue(values, "revisionDate", "revision_date") || "미입력")
-              : textField("revisionDate", "제·개정일", formValue(values, "revisionDate", "revision_date"), normalizedValidation, { required: true, type: "date" })}
-            ${textField("disposalDueYear", "폐기 예정 연도", formValue(values, "disposalDueYear", "disposal_due_year"), normalizedValidation, { required: true, type: "number", extra: 'min="1900" max="9999" step="1"' })}
-          </div>
-        </fieldset>
-
         ${showLocation ? `<fieldset class="form-section">
           <legend>보관 위치</legend>
           ${locationPicker(slots, formValue(values, "rackSlotId", "rack_slot_id"), normalizedValidation.fieldErrors?.rackSlotId)}
@@ -87,6 +78,16 @@ export function documentFormPage({
           </div>
         </fieldset>` : ""}
 
+        <fieldset class="form-section">
+          <legend>보존 정보</legend>
+          <div class="form-grid two-column">
+            ${isInformationEdit
+              ? lockedField("제·개정일", formValue(values, "revisionDate", "revision_date") || "미입력")
+              : textField("revisionDate", "제·개정일", formValue(values, "revisionDate", "revision_date"), normalizedValidation, { required: true, type: "date" })}
+            ${textField("disposalDueYear", "폐기 예정 연도", formValue(values, "disposalDueYear", "disposal_due_year"), normalizedValidation, { required: true, type: "number", extra: 'min="1900" max="9999" step="1"' })}
+          </div>
+        </fieldset>
+
         <section class="form-section form-note-section" aria-labelledby="note-title">
           <h2 id="note-title">${noteLabel}</h2>
           <label class="sr-only" for="field-note">${noteLabel}</label>
@@ -94,9 +95,10 @@ export function documentFormPage({
           ${fieldError("note", normalizedValidation)}
         </section>
 
+        ${mode === "create" ? `<div class="continuation-options"><strong>연속 등록</strong><label class="check-item"><input type="checkbox" name="retainCategory" value="1" ${values.retainCategory ? "checked" : ""}>분류 유지</label><label class="check-item"><input type="checkbox" name="retainLocation" value="1" ${values.retainLocation ? "checked" : ""}>위치 유지</label><p class="muted">선택한 항목만 다음 등록에 이어집니다. 문서명·번호·개정은 새로 입력합니다.</p>${values.continuing ? '<p class="alert info" role="status">이전 문서 등록이 완료되었습니다. 유지된 분류·위치를 확인하고 다음 문서를 입력하세요.</p>' : ""}</div>` : ""}
         <div class="form-actions sticky-save-bar" data-save-bar>
           <div class="form-completion"><strong data-form-completion>필수 입력 0/0</strong><progress data-form-completion-bar max="100" value="0" aria-label="필수 입력 완료도"></progress></div>
-          <div class="button-group"><a class="button secondary" href="${escapeHtml(cancelUrl)}">취소</a><button type="submit" class="primary">${submitLabel}</button></div>
+          <div class="button-group"><a class="button secondary" href="${escapeHtml(cancelUrl)}">취소</a><button type="submit" class="primary" name="submitAction" value="save">${submitLabel}</button>${mode === "create" ? `<button type="submit" class="button secondary" name="submitAction" value="saveAndNext">저장 후 다음 등록</button>` : ""}</div>
         </div>
       </form>
 
@@ -158,7 +160,7 @@ function duplicateNotice(duplicate) {
 function formCancelUrl(action, values) {
   if (values.revisionSourceId) return `/documents/${Number(values.revisionSourceId)}`;
   const match = String(action).match(/^\/documents\/(\d+)\/edit$/);
-  return match ? `/documents/${match[1]}` : "/app";
+  return match ? documentLink(match[1], "", values.returnTo) : "/app";
 }
 
 function documentFormScript(showLocation) {
@@ -254,20 +256,12 @@ function documentFormScript(showLocation) {
         link.hidden = false;
       }
     };
-    var dirty = false;
     var markDirty = function () {
-      dirty = true;
       updateCompletion();
       updateLocationSelection();
     };
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
-    form.addEventListener('submit', function () { dirty = false; });
-    window.addEventListener('beforeunload', function (event) {
-      if (!dirty) return;
-      event.preventDefault();
-      event.returnValue = '';
-    });
     updateCompletion();
     updateLocationSelection();
 

@@ -24,7 +24,7 @@ export function page(title, body, session, status = 200) {
   <link rel="stylesheet" href="/assets/app.css">
   <script nonce="${nonce}" src="/assets/app.js" defer></script>
 </head>
-<body${session && capabilitiesFromSession(session).isDemoReadOnly ? ' data-access-mode="demo_readonly"' : ""}>
+<body data-navigation-scope="${escapeHtml(String(session?.username || session?.userId || "") + ":" + String(session?.sessionEpoch || ""))}"${session && capabilitiesFromSession(session).isDemoReadOnly ? ' data-access-mode="demo_readonly"' : ""}>
   <a href="#main-content" class="skip-nav">본문 바로가기</a>
   ${session ? header(session) : ""}
   ${session && capabilitiesFromSession(session).isDemoReadOnly ? '<div class="demo-readonly-banner" role="status"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><strong>시연 및 조회용</strong><span>모든 화면은 조회만 가능하며 저장·수정·삭제·다운로드는 차단됩니다.</span></div>' : ""}

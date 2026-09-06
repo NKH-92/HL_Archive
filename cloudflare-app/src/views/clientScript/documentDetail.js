@@ -3,18 +3,6 @@
 export function documentDetailScript() {
   return `      var documentDetail = document.querySelector('[data-document-detail]');
       if (documentDetail) {
-        documentDetail.querySelectorAll('[data-back-to-results]').forEach(function (link) {
-          link.addEventListener('click', function (event) {
-            try {
-              var previous = new URL(document.referrer || '', location.href);
-              var sameSearchFlow = previous.origin === location.origin && (previous.pathname === '/app' || previous.pathname === '/documents');
-              if (!sameSearchFlow || history.length < 2) return;
-              event.preventDefault();
-              history.back();
-            } catch {}
-          });
-        });
-
         function centerInside(scroller, target) {
           if (!scroller || !target) return;
           var scrollRect = scroller.getBoundingClientRect();

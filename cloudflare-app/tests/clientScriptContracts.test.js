@@ -70,8 +70,8 @@ test("정적 client 조립은 직렬화 소스·초기화 순서·검색 계약�
   assert.ok(script.includes("'/api/search-suggestions?q=' + encodeURIComponent(q)"));
   assert.ok(script.includes("검색 중…"));
   assert.ok(script.includes("검색 결과가 없습니다."));
-  assert.ok(script.includes("viewer-result-row"));
-  assert.ok(script.includes("viewer-result-detail-only"));
+  assert.ok(script.includes("window.HanlimResults.resultRow"));
+  assert.ok(script.includes("window.HanlimResults.resultTable"));
   assert.ok(script.includes("data-search-more"));
   assert.ok(script.includes("payload.nextCursor"));
   assert.doesNotMatch(script, /fetch\('\/api\/search-index'/);
@@ -169,7 +169,7 @@ test("문서 작업 공간은 검색 단축키·행 탐색·열 설정·선택 �
   assert.match(script, /event\.key === 'ArrowDown'/);
   assert.match(script, /event\.key === 'ArrowUp'/);
   assert.match(script, /data-document-preview/);
-  assert.match(script, /\(min-width: 1180px\)/);
+  assert.match(script, /getBoundingClientRect\(\)\.width >= 1200/);
   assert.doesNotMatch(script, /\(min-width: 1181px\)/);
   assert.match(script, /hanlimDocumentColumns/);
   assert.match(script, /data-set-selection-form/);
@@ -182,7 +182,7 @@ test("즉시 검색 DOM 교체는 화면에 남은 선택만 일괄 작업 상�
   assert.match(script, /var replaceResults = function \(html, preserveSelection\)/);
   assert.match(script, /new Set\(Array\.from\(document\.querySelectorAll\('\[data-bulk-item\]:checked'\)\)/);
   assert.match(script, /item\.checked = selectedIds\.has\(item\.value\)/);
-  assert.match(script, /replaceResults\(initialResults\.body, false\)/);
+  assert.match(script, /if \(!append\) resetSearchSelection\(\)/);
   assert.match(script, /list\.insertAdjacentHTML\('beforeend', listHtml\)/);
   assert.match(script, /resultsBody\.insertAdjacentHTML\('beforeend', '<nav class="pagination">/);
   assert.doesNotMatch(script, /replaceResults\(html, append\)/);
@@ -210,8 +210,8 @@ test("viewer filters use one live-search path on desktop and mobile", () => {
   assert.match(script, /data-viewer-clear-filter/);
   assert.match(script, /data-viewer-set-filter/);
   assert.match(script, /data-viewer-remove-token/);
-  assert.match(script, /hasActiveSearchCriteria/);
-  assert.match(script, /'필터 검색 결과'/);
+  assert.match(script, /sequence !== searchSequence/);
+  assert.match(script, /'보관중 문서'/);
   assert.match(script, /history\.replaceState\(null, '', '\/app'/);
   assert.match(script, /mobileFilterDialog\?\.close\(\);[\s\S]*syncBrowserUrl\(\);[\s\S]*requestSearch\('', false\)/);
   assert.match(script, /window\.SearchCore\.parseSearchQuery/);
@@ -222,19 +222,19 @@ test("viewer filters use one live-search path on desktop and mobile", () => {
   assert.match(script, /payload\.candidateCount !== null && payload\.candidateCount !== undefined/);
   assert.match(script, /Array\.isArray\(payload\.suggestions\)/);
   assert.match(script, /if \(input\.closest\('\[data-viewer-form\]'\)\) \{/);
-  assert.match(script, /!hasActiveSearchCriteria\(\) && isHomeMode\) \{ syncBrowserUrl\(\); restoreInitial\(\); return; \}/);
+  assert.match(script, /compositionstart/);
   assert.match(script, /control\.form\?\.matches\('\[data-viewer-form\]'\)/);
   assert.doesNotMatch(script, /viewerForm\.addEventListener\?\.\('change', syncWorkspaceReturnTo\)/);
 });
 
-test("interactive search results expose one grid selection model and one empty reset", () => {
+test("interactive results share native table rendering and one empty reset", () => {
   const script = clientScriptModule.clientScript();
+  assert.match(script, /window.HanlimResults.resultRow/);
+  assert.match(script, /window.HanlimResults.resultTable/);
+  assert.match(script, /data-preview-open/);
+  assert.match(script, /data-viewer-search-reset/);
+  assert.doesNotMatch(script, /role="grid"/);
 
-  assert.match(script, /role="grid" aria-label="문서 검색 결과"/);
-  assert.match(script, /role="row" tabindex="0" aria-selected="false"/);
-  assert.match(script, /data-viewer-search-reset>검색 초기화<\/a>/);
-  assert.equal((script.match(/data-viewer-search-reset>검색 초기화<\/a>/g) || []).length, 1);
-  assert.doesNotMatch(script, /전체 문서 보기<\/a><a[^>]*>검색 초기화/);
 });
 
 test("라우트가 생산하는 전역 토스트 키는 모두 표시 문구를 가진다", () => {

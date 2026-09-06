@@ -1,3 +1,4 @@
+import { documentLink, documentReturnTo } from "../shared/documents/navigation.js";
 // 문서 위치 이동 라우트. 서버 권한 검사는 화면 버튼 노출과 별개로 항상 수행한다.
 
 import {
@@ -35,6 +36,7 @@ export async function handleDocumentMove(request, env, session, documentId, effe
 
   const form = await request.formData();
   const values = {
+    returnTo: documentReturnTo(form.get("returnTo")),
     rackSlotId: Number(form.get("rackSlotId")),
     rackFace: clean(form.get("rackFace")),
     reason: clean(form.get("reason")),
@@ -53,7 +55,7 @@ export async function handleDocumentMove(request, env, session, documentId, effe
       logError("documents.move.search-index-immediate", error, { documentId });
     }
   }
-  return redirect(`/documents/${documentId}?toast=moved`);
+  return redirect(documentLink(documentId, "", values.returnTo, "moved"));
 }
 
 export async function handleMovementHistory(request, env, session) {

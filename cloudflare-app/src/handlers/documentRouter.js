@@ -1,4 +1,5 @@
 // 문서 조회·등록·폐기·이동 라우트. routeRegistry가 해석한 route id와 params만 사용한다.
+import { documentReturnTo } from "../shared/documents/navigation.js";
 import { handleDocumentExport } from "./documents/browse.js";
 import {
   handleCreateDocument,
@@ -52,7 +53,13 @@ export async function routeDocumentRequest(request, env, session, url, resolved,
   }
   if (routeId === "documents.new") {
     return requireManageDocuments(session) ?? renderCreateDocument(env, session, {
-      documentNumber: url.searchParams.get("documentNumber") || "",
+      documentNumber: url.searchParams.has("continuing") ? "" : url.searchParams.get("documentNumber") || "",
+      continuing: url.searchParams.get("continuing") === "1",
+      retainCategory: url.searchParams.get("retainCategory") === "1",
+      retainLocation: url.searchParams.get("retainLocation") === "1",
+      categoryId: url.searchParams.get("categoryId") || "",
+      rackSlotId: url.searchParams.get("rackSlotId") || "",
+      rackFace: url.searchParams.get("rackFace") || "A",
       returnTo: url.searchParams.get("returnTo") || ""
     });
   }
@@ -63,7 +70,7 @@ export async function routeDocumentRequest(request, env, session, url, resolved,
   const documentId = Number(params.id);
   if (!Number.isInteger(documentId) || documentId < 1) return null;
 
-  if (routeId === "documents.move.form") return renderDocumentMove(env, session, documentId);
+  if (routeId === "documents.move.form") return renderDocumentMove(env, session, documentId, "", { returnTo: documentReturnTo(url.searchParams.get("returnTo")) });
   if (routeId === "documents.move") return handleDocumentMove(request, env, session, documentId, effects);
 
   const action = documentAction(routeId);

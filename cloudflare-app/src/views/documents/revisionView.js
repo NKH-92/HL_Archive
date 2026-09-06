@@ -1,3 +1,4 @@
+import { documentLink } from "../../shared/documents/navigation.js";
 import { locationLabel } from "../../domains/racks/index.js";
 import { escapeHtml } from "../../ui/html/escape.js";
 import { formatRevisionLabel } from "../../shared/documents/revision.js";
@@ -11,7 +12,7 @@ export function documentRevisionPage({ session, document, values = {}, validatio
 
   return page("문서 개정", `
     <section class="page-head">
-      <nav class="breadcrumb" aria-label="경로"><a href="/documents/${Number(document.id)}">문서 상세</a><span>/</span><span>문서 개정</span></nav>
+      <nav class="breadcrumb" aria-label="경로"><a href="${escapeHtml(documentLink(document.id, "", values.returnTo))}">문서 상세</a><span>/</span><span>문서 개정</span></nav>
       <h1>문서 개정</h1>
       <p>동일한 바인더에서 현재 개정본을 신규 개정본으로 교체합니다.</p>
     </section>
@@ -19,8 +20,9 @@ export function documentRevisionPage({ session, document, values = {}, validatio
     <section class="document-form-layout revision-form-layout">
       <form method="post" action="/documents/${Number(document.id)}/revise" class="panel document-form" data-revision-form>
         ${errorSummary(fieldErrors, formErrors)}
-        <input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(document.updated_at)}">
-        <input type="hidden" name="expectedRowVersion" value="${Number(document.row_version)}">
+        <input type="hidden" name="returnTo" value="${escapeHtml(values.returnTo || "")}">
+        <input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(values.expectedUpdatedAt ?? document.updated_at)}">
+        <input type="hidden" name="expectedRowVersion" value="${Number(values.expectedRowVersion ?? document.row_version)}">
 
         <div class="alert warning revision-policy" role="note">
           <strong>동일 바인더 교체 전용</strong>
@@ -39,7 +41,7 @@ export function documentRevisionPage({ session, document, values = {}, validatio
         </fieldset>
 
         <fieldset class="form-section">
-          <legend>신규 개정 정보</legend>
+          <legend>신규 개정 정보</legend><p class="revision-change-summary"><strong>${escapeHtml(formatRevisionLabel(document.revision_number))}</strong> → <strong data-new-revision>${revisionNumber ? escapeHtml(formatRevisionLabel(revisionNumber)) : "신규 개정 입력"}</strong><span>이전본 자동 폐기 · 보관 위치 유지</span></p>
           <div class="form-grid two-column">
             ${field("revisionNumber", "새 개정번호", revisionNumber, fieldErrors, "text")}
             ${field("revisionDate", "새 제·개정일", revisionDate, fieldErrors, "date")}
@@ -52,7 +54,7 @@ export function documentRevisionPage({ session, document, values = {}, validatio
         </label>
 
         <div class="form-actions">
-          <a class="button secondary" href="/documents/${Number(document.id)}">취소</a>
+          <a class="button secondary" href="${escapeHtml(documentLink(document.id, "", values.returnTo))}">취소</a>
           <button type="submit" class="action-button">개정본으로 교체</button>
         </div>
       </form>

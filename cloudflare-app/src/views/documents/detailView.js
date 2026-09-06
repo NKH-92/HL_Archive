@@ -1,5 +1,6 @@
 // 문서 상세: 검색·등록·폐기를 잇는 텍스트 중심 연결 화면.
 
+import { documentLink, documentReturnTo } from "../../shared/documents/navigation.js";
 import { locationLabel, rackFaceLabel } from "../../domains/racks/index.js";
 import { readBoolean } from "../../shared/coercion.js";
 import { formatRevisionLabel } from "../../shared/documents/revision.js";
@@ -9,12 +10,13 @@ import { zoneFloorPlanView } from "../floorPlanViews.js";
 import { page, statusBadge, timeline, timelineItem } from "../layout.js";
 import { rackViewOrientation } from "../../domains/racks/domain/orientation.js";
 
-export function documentDetailsPage({ session, document, tags, disposalLogs, auditLogs, movements = [], revisionHistory = [], floorPlan = [] }) {
+export function documentDetailsPage({ session, document, tags, disposalLogs, auditLogs, movements = [], revisionHistory = [], floorPlan = [], returnTo = "" }) {
   const canManageDocuments = hasReadPermission(session, PERMISSIONS.MANAGE_DOCUMENTS);
   const canManageDisposals = hasReadPermission(session, PERMISSIONS.MANAGE_DISPOSALS);
   const canViewAudit = hasReadPermission(session, PERMISSIONS.VIEW_AUDIT);
   const canViewMovements = canViewAudit || hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
   const canMoveDocuments = hasReadPermission(session, PERMISSIONS.MOVE_DOCUMENTS);
+  returnTo = documentReturnTo(returnTo);
   const location = locationLabel(document);
   const latestDisposal = disposalLogs.find((log) => log.action === "disposed");
   const currentRevision = revisionHistory.find((item) => Number(item.id) === Number(document.id));
@@ -29,8 +31,9 @@ export function documentDetailsPage({ session, document, tags, disposalLogs, aud
 
   return page(document.document_name, `<div class="document-detail-page" data-document-detail>
     <section class="document-detail-head">
-      <nav class="breadcrumb" aria-label="경로"><a href="/app" data-back-to-results>검색 결과로</a><span>/</span><span>문서 상세</span></nav>
+      <nav class="breadcrumb" aria-label="경로"><a href="${escapeHtml(returnTo || "/app")}" data-back-to-results>검색 결과로</a><span>/</span><span>문서 상세</span></nav>
       <div class="document-title-row"><div class="document-title-copy"><h1>${escapeHtml(document.document_name)}</h1><p><span class="mono">${escapeHtml(document.document_number)}</span> · ${escapeHtml(formatRevisionLabel(document.revision_number))}</p></div><div class="document-state-badges">${statusBadge(document.status)} ${syncBadge}</div></div>
+      ${isExcluded ? "" : documentActions(document, { canManageDocuments, canMoveDocuments, canManageDisposals, isAdmin: session.role === "Admin" || session.demoReadAuthorized, replacementId, returnTo })}
     </section>
 
     <div class="document-detail-alerts">
@@ -39,9 +42,11 @@ export function documentDetailsPage({ session, document, tags, disposalLogs, aud
       ${document.status === "disposed" && !replacementId ? `<div class="alert warning" role="status">폐기된 문서입니다. 위치보다 폐기 사유와 이력을 먼저 확인하세요.</div>` : ""}
     </div>
 
+    ${document.status === "disposed" ? `<section class="panel document-state-summary"><h2>폐기 기록</h2><dl>${detailRow("폐기 사유", latestDisposal?.reason || "기록 없음")}${detailRow("폐기 처리일", latestDisposal?.created_at || "기록 없음")}</dl>${replacementId ? `<a class="button" href="${escapeHtml(documentLink(replacementId, "", returnTo))}">연결된 후속 개정 보기</a>` : ""}</section>` : ""}
+    ${document.status === "disposed" || isExcluded ? '<details class="panel historical-location"><summary>마지막 기록 위치 확인</summary>' : ""}
     <section class="panel document-location-summary document-location-hero" aria-labelledby="document-location-title">
       <div class="location-hero-copy">
-        <small>보관 위치</small>
+        <small>${document.status === "disposed" || isExcluded ? "마지막 기록 위치" : "보관 위치"}</small>
         <strong id="document-location-title" class="mono">${escapeHtml(location)}</strong>
         <span>${escapeHtml(locationGuidance(document, orientation, rackLabel))}</span>
       </div>
@@ -52,6 +57,8 @@ export function documentDetailsPage({ session, document, tags, disposalLogs, aud
       ${renderDocumentFloorPlan(document, floorPlan)}
       ${renderMiniVisualizer(document)}
     </section>
+
+    ${document.status === "disposed" || isExcluded ? "</details>" : ""}
 
     <section class="document-detail-sections">
       <article class="panel detail-section">
@@ -80,7 +87,7 @@ export function documentDetailsPage({ session, document, tags, disposalLogs, aud
 
     ${revisionHistory.length > 1 ? renderRevisionHistory(revisionHistory, document.id) : ""}
 
-    ${isExcluded ? "" : documentActions(document, { canManageDocuments, canMoveDocuments, canManageDisposals, isAdmin: session.role === "Admin" || session.demoReadAuthorized, replacementId })}
+
 
     ${canViewAudit ? `<details class="panel detail-history"><summary>감사 이력 <span class="count-badge">${auditLogs.length}건</span></summary>${timeline(auditLogs, renderAuditLog, "감사 이력이 없습니다.")}</details>` : ""}
     ${canViewMovements ? `<details class="panel detail-history"><summary>위치 이동 이력 <span class="count-badge">${movements.length}건</span></summary>${timeline(movements, renderMovementLog, "위치 이동 이력이 없습니다.")}</details>` : ""}
@@ -116,10 +123,10 @@ function documentActions(document, capabilities) {
   const stateActions = [];
   if (document.status === "active") {
     if (capabilities.canManageDocuments) {
-      primaryActions.push(`<a class="button secondary" href="/documents/${document.id}/edit">정보 수정</a>`);
-      primaryActions.push(`<a class="button secondary" href="/documents/${document.id}/revise">문서 개정</a>`);
+      primaryActions.push(`<a class="button secondary" href="${escapeHtml(documentLink(document.id, "edit", capabilities.returnTo))}">정보 수정</a>`);
+      primaryActions.push(`<a class="button secondary" href="${escapeHtml(documentLink(document.id, "revise", capabilities.returnTo))}">문서 개정</a>`);
     }
-    if (capabilities.canMoveDocuments) primaryActions.push(`<a class="button secondary" href="/documents/${document.id}/move">위치 이동</a>`);
+    if (capabilities.canMoveDocuments) primaryActions.push(`<a class="button secondary" href="${escapeHtml(documentLink(document.id, "move", capabilities.returnTo))}">위치 이동</a>`);
     if (capabilities.canManageDisposals) stateActions.push(`<button type="button" class="danger-button" data-open-modal="dispose-modal">폐기</button>`);
   } else if (capabilities.isAdmin && !capabilities.replacementId) {
     stateActions.push(`<button type="button" class="button secondary" data-open-modal="restore-modal">폐기 취소</button>`);
@@ -129,7 +136,7 @@ function documentActions(document, capabilities) {
   const stateGroup = stateActions.length
     ? `<div class="detail-state-actions" role="group" aria-label="${document.status === "active" ? "폐기 처리" : "폐기 취소"}"><span class="detail-state-label">${document.status === "active" ? "상태 변경 · 되돌리려면 복구 권한이 필요합니다" : "상태 변경"}</span><div>${stateActions.join("")}</div></div>`
     : "";
-  return `<details class="panel detail-actions" aria-label="문서 작업" data-detail-actions open><summary><span>관리 작업</span><span class="count-badge">${primaryActions.length + stateActions.length}개</span></summary><div class="detail-action-groups">${primaryActions.length ? `<div>${primaryActions.join("")}</div>` : ""}${stateGroup}</div></details>`;
+  return `<section class="detail-actions" aria-label="문서 작업"><div class="detail-action-groups">${primaryActions.length ? `<div>${primaryActions.join("")}</div>` : ""}${stateGroup}</div></section>`;
 }
 
 function renderRevisionHistory(items, currentDocumentId) {
@@ -143,7 +150,7 @@ function renderRevisionHistory(items, currentDocumentId) {
 }
 
 function disposeModal(document) {
-  return `<dialog id="dispose-modal" class="modal"><form method="post" action="/documents/${document.id}/dispose" class="modal-body"><h3>문서 폐기</h3><p class="muted">문서는 삭제되지 않고 폐기 상태로 변경되며 이력은 보존됩니다.</p><label>폐기 사유 <em>*</em><textarea name="reason" rows="3" required></textarea></label><div class="modal-actions"><button type="button" class="button secondary" data-close-modal>취소</button><button type="submit" class="danger-button">폐기 확인</button></div></form></dialog>`;
+  return `<dialog id="dispose-modal" class="modal" aria-labelledby="dispose-title"><form method="post" action="/documents/${document.id}/dispose" class="modal-body"><h3 id="dispose-title">문서 폐기</h3><dl class="disposal-target-summary">${detailRow("문서명", document.document_name)}${detailRow("문서번호", document.document_number, true)}${detailRow("개정", formatRevisionLabel(document.revision_number))}${detailRow("대상 수량", "1건")}${detailRow("기록상 위치", locationLabel(document))}</dl><p class="muted">문서는 삭제되지 않고 폐기 상태로 변경되며 이력은 보존됩니다.</p><label>폐기 사유 <em>*</em><textarea name="reason" rows="3" required></textarea></label><div class="modal-actions"><button type="button" class="button secondary" data-close-modal>취소</button><button type="submit" class="danger-button">이 문서 폐기 처리</button></div></form></dialog>`;
 }
 
 function restoreModal(document) {

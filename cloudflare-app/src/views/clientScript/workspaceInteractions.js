@@ -1,96 +1,99 @@
-// 문서 작업 공간의 열 설정·행 키보드 탐색·빠른 미리보기.
-
+// 문서 작업 공간: 명시적 빠른 보기와 탭 단위 검색 복귀.
 export function workspaceInteractionScript() {
   return `      var workspaceSearch = document.querySelector('[data-viewer-form] input[name="q"]');
       var workspacePreview = document.querySelector('[data-document-preview]');
+      var workspace = document.querySelector('[data-viewer-app]');
+      var previewTrigger = null;
+      var previewInline = false;
       var columnToggle = document.querySelector('[data-column-toggle="revision-date"]');
-
       var applyRevisionColumn = function (visible) {
-        document.querySelectorAll('[data-column="revision-date"]').forEach(function (cell) {
-          cell.hidden = !visible;
-        });
-        document.querySelectorAll('.viewer-result-table').forEach(function (table) {
-          table.classList.toggle('show-revision-date', visible);
-        });
+        document.querySelectorAll('[data-column="revision-date"]').forEach(function (cell) { cell.hidden = !visible; });
+        document.querySelectorAll('.viewer-result-table').forEach(function (table) { table.classList.toggle('show-revision-date', visible); });
         if (columnToggle) columnToggle.checked = visible;
       };
-
       if (columnToggle) {
-        var storedColumns = '';
-        try { storedColumns = localStorage.getItem('hanlimDocumentColumns') || ''; } catch {}
-        applyRevisionColumn(storedColumns.split(',').includes('revision-date'));
+        try { applyRevisionColumn(localStorage.getItem('hanlimDocumentColumns') === 'revision-date'); } catch {}
         columnToggle.addEventListener('change', function () {
           applyRevisionColumn(columnToggle.checked);
           try { localStorage.setItem('hanlimDocumentColumns', columnToggle.checked ? 'revision-date' : ''); } catch {}
         });
       }
-
-      var fillPreview = function (row) {
-        if (!workspacePreview || !row) return;
-        var setText = function (selector, value) {
-          var target = workspacePreview.querySelector(selector);
-          if (target) target.textContent = value || '-';
-        };
-        setText('[data-preview-name]', row.dataset.documentName);
-        setText('[data-preview-number]', (row.dataset.documentNumber || '') + ' · ' + (row.dataset.documentRevision || '-'));
-        setText('[data-preview-category]', row.dataset.documentCategory);
-        setText('[data-preview-location]', row.dataset.documentLocation);
-        setText('[data-preview-status]', row.dataset.documentStatus);
-        var link = workspacePreview.querySelector('[data-preview-link]');
-        if (link) link.href = row.dataset.documentUrl || '/app';
-        document.querySelectorAll('[data-document-row]').forEach(function (item) {
-          item.classList.toggle('is-selected', item === row);
-          item.setAttribute('aria-selected', item === row ? 'true' : 'false');
-        });
-        workspacePreview.hidden = false;
+      var closePreview = function (restoreFocus) {
+        if (!workspacePreview) return;
+        if (workspacePreview.open) workspacePreview.close();
+        workspace?.classList.remove('has-preview');
+        document.querySelectorAll('[data-preview-open]').forEach(function (button) { button.setAttribute('aria-expanded', 'false'); });
+        if (restoreFocus && previewTrigger?.isConnected) previewTrigger.focus();
       };
-
+      var sizePreview = function () {
+        if (!workspace || !workspacePreview?.open) return;
+        var inline = workspace.getBoundingClientRect().width >= 1200;
+        if (inline === previewInline) return;
+        workspacePreview.close();
+        previewInline = inline;
+        workspacePreview.classList.toggle('is-inline', inline);
+        workspace.classList.toggle('has-preview', inline);
+        if (inline) workspacePreview.show(); else workspacePreview.showModal();
+      };
+      if (workspacePreview) {
+        workspacePreview.addEventListener('cancel', function (event) { event.preventDefault(); closePreview(true); });
+        window.addEventListener('resize', sizePreview);
+      }
+      document.addEventListener('hanlim:search-change', function () { closePreview(false); });
       document.addEventListener('click', function (event) {
         var target = event.target instanceof Element ? event.target : null;
-        if (target?.closest('[data-preview-close]')) {
-          if (workspacePreview) workspacePreview.hidden = true;
-          document.querySelectorAll('[data-document-row]').forEach(function (item) {
-            item.classList.remove('is-selected');
-            item.setAttribute('aria-selected', 'false');
+        if (target?.closest('[data-preview-close]')) { closePreview(true); return; }
+        var button = target?.closest('[data-preview-open]');
+        var row = button?.closest('[data-document-row]');
+        if (row && workspacePreview) {
+          closePreview(false);
+          previewTrigger = button;
+          [['name', 'documentName'], ['number', 'documentNumber'], ['category', 'documentCategory'], ['location', 'documentLocation'], ['status', 'documentStatus']].forEach(function (pair) {
+            var element = workspacePreview.querySelector('[data-preview-' + pair[0] + ']');
+            if (element) element.textContent = row.dataset[pair[1]] || '-';
           });
-          return;
+          workspacePreview.querySelector('[data-preview-number]').textContent += ' · ' + row.dataset.documentRevision;
+          workspacePreview.querySelector('[data-preview-link]').href = row.dataset.documentUrl;
+          var rack = workspacePreview.querySelector('[data-preview-rack]');
+          rack.replaceChildren();
+          for (var shelf = 6; shelf >= 1; shelf -= 1) {
+            for (var column = 1; column <= 7; column += 1) {
+              var slot = document.createElement('span');
+              var active = column === Number(row.dataset.documentColumn) && shelf === Number(row.dataset.documentShelf);
+              slot.className = 'preview-slot' + (active ? ' is-active' : '');
+              slot.textContent = column + '·' + shelf;
+              slot.setAttribute('aria-label', column + '열 ' + shelf + '선반' + (active ? ' 선택 위치' : ''));
+              rack.appendChild(slot);
+            }
+          }
+          previewInline = workspace.getBoundingClientRect().width >= 1200;
+          workspacePreview.classList.toggle('is-inline', previewInline);
+          workspace.classList.toggle('has-preview', previewInline);
+          if (previewInline) workspacePreview.show(); else workspacePreview.showModal();
+          button.setAttribute('aria-expanded', 'true');
         }
-        var row = target?.closest('[data-document-row]');
-        if (!row || target.closest('a, button, input, select, textarea, label')) return;
-        if (window.matchMedia?.('(min-width: 1180px)').matches && workspacePreview) {
-          fillPreview(row);
-          return;
+        var detailLink = target?.closest('[data-doc-click], [data-preview-link]');
+        if (detailLink && workspace) {
+          var sourceRow = detailLink.closest('[data-document-row]') || previewTrigger?.closest('[data-document-row]');
+          if (!sourceRow) return;
+          var state = { url: location.pathname + location.search, id: Number(sourceRow.dataset.documentId), count: document.querySelectorAll('[data-document-row]').length, scroll: window.scrollY, time: Date.now() };
+          try { sessionStorage.setItem('hanlimSearchReturn:' + (document.body.dataset.navigationScope || ''), JSON.stringify(state)); } catch {}
         }
-        if (row.dataset.documentUrl) location.assign(row.dataset.documentUrl);
       });
-
       document.addEventListener('keydown', function (event) {
-        var target = event.target instanceof Element ? event.target : null;
-        var editing = target?.matches('input, textarea, select, [contenteditable="true"]');
-        if (event.key === '/' && !editing && workspaceSearch) {
-          event.preventDefault();
-          workspaceSearch.focus();
-          workspaceSearch.select();
-          return;
+        var editing = event.target?.matches?.('input, textarea, select, [contenteditable="true"]');
+        if (event.key === '/' && !editing && workspaceSearch && !workspacePreview?.open) {
+          event.preventDefault(); workspaceSearch.focus(); workspaceSearch.select();
         }
-        var row = target?.closest('[data-document-row]');
-        if (!row) return;
-        var rows = Array.from(document.querySelectorAll('[data-document-row]'));
-        var index = rows.indexOf(row);
-        if (event.key === 'ArrowDown' && rows[index + 1]) {
-          event.preventDefault();
-          rows[index + 1].focus();
-          if (window.matchMedia?.('(min-width: 1180px)').matches) fillPreview(rows[index + 1]);
-        } else if (event.key === 'ArrowUp' && rows[index - 1]) {
-          event.preventDefault();
-          rows[index - 1].focus();
-          if (window.matchMedia?.('(min-width: 1180px)').matches) fillPreview(rows[index - 1]);
-        } else if (event.key === 'Enter' && row.dataset.documentUrl) {
-          event.preventDefault();
-          location.assign(row.dataset.documentUrl);
-        }
+        if (event.key === 'Escape' && workspacePreview?.open) closePreview(true);
       });
-
+      window.addEventListener('pageshow', function (event) {
+        if (!event.persisted || !workspace) return;
+        document.querySelectorAll('[data-bulk-item]').forEach(function (item) { item.checked = false; });
+        closePreview(false); syncBulk();
+        // 뒤로가기 캐시의 과거 행을 사용하지 않고 최신 조회 경로에서 복원한다.
+        location.reload();
+      });
       // 모바일 고정 저장 바는 폼이 화면에 있을 때만 떠 있어야 한다. 폼을 완전히 지나가면
       // 흐름으로 되돌려 뒤따르는 내용을 가리지 않는다.
       var mobileSaveBar = document.querySelector('[data-save-bar]');
