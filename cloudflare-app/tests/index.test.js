@@ -144,9 +144,13 @@ test("일반 dashboard는 상태 파라미터와 무관하게 보관중 문서�
   assert.ok(homeSearch.args.includes(31), "초기 문서 목록은 30행과 다음 페이지 sentinel 1행을 읽어야 한다");
   assert.equal(
     homeEnv.state.calls.some((call) => call.sql.includes("SELECT generation FROM search_projection_state")),
-    false,
-    "서버 렌더링 목록은 사용하지 않는 API cursor generation을 읽지 않아야 한다"
+    true,
+    "서버 조회와 cursor를 브라우저가 재사용하므로 generation을 함께 읽어야 한다"
   );
+  const initialResults = JSON.parse(homeHtml.match(/<script[^>]*data-viewer-context[^>]*>([\s\S]*?)<\/script>/)[1]).initialResults;
+  assert.ok(initialResults.indexGeneration >= 1);
+  assert.ok(Array.isArray(initialResults.items));
+  assert.ok(Object.hasOwn(initialResults, "nextCursor"));
   assert.doesNotMatch(homeHtml, /<select name="status"/);
   assert.match(homeHtml, /<option value="updated" selected>최신순<\/option>/);
   assert.match(homeHtml, /충전 공정 밸리데이션 보고서/);

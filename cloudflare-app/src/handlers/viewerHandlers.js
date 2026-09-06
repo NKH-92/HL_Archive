@@ -38,7 +38,7 @@ export async function handleDashboard(request, env, session) {
       sort: filters.sort,
       page,
       pageSize: 30
-    }, { includeFacets: false, includeCursor: false })
+    }, { includeFacets: false })
   ]);
 
   const totalItems = viewerSearch.pagination?.totalItems ?? viewerSearch.items?.length ?? 0;

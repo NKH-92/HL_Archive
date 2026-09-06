@@ -451,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
             excelProgress(excelCachedParsed.rows.length + 1, excelCachedParsed.rows.length + 2, '대분류, 태그, 랙 위치와 변경 내역을 검증하고 있습니다.');
             await excelPost('/document-snapshots/' + created.id + '/prepare', {});
             excelProgress(excelCachedParsed.rows.length + 2, excelCachedParsed.rows.length + 2, '검증을 완료했습니다.');
+            document.dispatchEvent(new Event('hanlim:form-saved'));
             location.href = '/document-snapshots/' + created.id;
           } catch (error) {
             button.disabled = false;

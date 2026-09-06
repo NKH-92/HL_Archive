@@ -1,11 +1,12 @@
 // 검색 뷰어(/app)·Q&A·검색 리포트 화면.
 
+import { resultRow, resultTable } from "./searchResultMarkup.js";
 import { escapeHtml } from "../ui/html/escape.js";
 import { FREE_TIER_BUDGET } from "../config.js";
 import { safeEmbeddedJson } from "../platform/web/renderContext.js";
 import { capabilitiesFromSession } from "../domains/identity/index.js";
 import { searchCoreScript } from "./clientScript.js";
-import { alertWarning, emptyResult, emptyState, filterSelectRow, listUrl, page, paginationNav, sectionHeader, statusBadge } from "./layout.js";
+import { alertWarning, emptyState, filterSelectRow, listUrl, page, paginationNav, sectionHeader } from "./layout.js";
 import {
   didYouMeanView,
   highlight,
@@ -30,8 +31,7 @@ export function dashboardPage({
   parsedQuery = null,
   didYouMean = [],
   editableSets = [],
-  selectedDocumentIds = [],
-  mode = "results"
+  selectedDocumentIds = []
 }) {
   const capabilities = capabilitiesFromSession(session);
   const uiFilters = Object.keys(explicitFilters || {}).length
@@ -42,6 +42,7 @@ export function dashboardPage({
       }
     : filters;
   const viewerContext = safeEmbeddedJson({
+    initialResults: viewerSearch.indexGeneration ? viewerSearch : null,
     categories: categories.map((item) => ({ id: Number(item.id), name: String(item.name || "") })),
     tags: tags.map((item) => ({ id: Number(item.id), name: String(item.name || "") })),
     racks: racks.map((item) => ({
@@ -55,12 +56,8 @@ export function dashboardPage({
   });
   const documents = viewerSearch.items || [];
   const suggestions = viewerSearch.suggestions || [];
-  const rawTotalItems = viewerSearch.pagination?.totalItems;
-  const totalItems = rawTotalItems === null || rawTotalItems === undefined ? null : Number(rawTotalItems || 0);
+  const totalItems = viewerSearch.pagination?.totalItems ?? null;
   const shownItems = documents.length;
-  const resultCountLabel = totalItems === null
-    ? `${shownItems.toLocaleString("ko-KR")}${viewerSearch.pagination?.hasMore ? "+" : ""}건`
-    : `${totalItems.toLocaleString("ko-KR")}건`;
   const resultStatusText = totalItems === null
     ? !shownItems
       ? "조건에 맞는 문서가 없습니다."
@@ -71,63 +68,12 @@ export function dashboardPage({
         ? `${totalItems.toLocaleString("ko-KR")}건 중 ${shownItems.toLocaleString("ko-KR")}건을 표시했습니다.`
         : `${totalItems.toLocaleString("ko-KR")}건을 찾았습니다.`;
 
-  // 홈 모드: 검색을 먼저 두되 서버가 기본 30행을 함께 제공한다.
-  if (mode === "home") {
-    return page("문서", `
-      <section class="search-home" data-search-home>
-        <section class="search-home-hero" aria-labelledby="viewer-title">
-          <div class="search-home-copy">
-            <h1 id="viewer-title">문서를 빠르게 찾으세요.</h1>
-            <p class="search-home-sub">문서명, 문서번호, 대분류 또는 보관 위치를 입력하면 가장 가까운 결과부터 보여드립니다.</p>
-          </div>
-          ${viewerSearchForm({ query: "", suggestions: [], categories, tags, filters: uiFilters, home: true, showFilters: false, formId: "viewer-search-form" })}
-        </section>
-        ${viewerFilterControls({
-          query: "",
-          categories,
-          tags,
-          filters: uiFilters,
-          statusText: totalItems === null
-            ? shownItems
-              ? `최근 등록·수정 문서 ${shownItems.toLocaleString("ko-KR")}건을 표시합니다.${viewerSearch.pagination?.hasMore ? " 다음 결과가 더 있습니다." : ""}`
-              : "보관 중인 문서가 없습니다."
-            : totalItems
-              ? `보관 문서 ${totalItems.toLocaleString("ko-KR")}건 중 최근 등록·수정 ${shownItems.toLocaleString("ko-KR")}건을 표시합니다.`
-              : "보관 중인 문서가 없습니다.",
-          supplemental: `${parsedChipRow(null, "")}${activeFilterChips({ query: "", filters: uiFilters, categories, tags, racks })}<div data-home-extras>${homeQuickLinks(categories)}</div>`
-        })}
-
-        <section class="viewer-workspace is-home" data-viewer-app>
-          <article class="panel results-panel" aria-labelledby="viewer-results-title" data-viewer-results aria-live="polite">
-            <div class="section-title viewer-results-heading">
-              <h2 id="viewer-results-title" data-results-title>최근 등록·수정 문서</h2>
-              <div class="viewer-result-tools">
-                ${columnSettings()}
-                <span class="count-badge" data-results-count>${resultCountLabel}</span>
-              </div>
-            </div>
-            <div data-results-body>
-              ${viewerDocumentResults(documents, "", capabilities, selectedDocumentIds, false)}
-              ${viewerPagination(viewerSearch.pagination, { query: "", filters })}
-            </div>
-          </article>
-          ${workspacePreview()}
-          ${workspaceBulkActions({ capabilities, editableSets, returnTo: "/app" })}
-        </section>
-
-      </section>
-      ${mobileViewerFilterDialog({ query: "", categories, tags, filters: uiFilters })}
-      <script type="application/json" data-viewer-context>${viewerContext}</script>
-      ${searchCoreScript()}
-    `, session);
-  }
-
   // 검색 모드: 고정 열의 행 목록만 보여 주어 비교와 스캔을 우선한다.
   return page("문서", `
     <section class="search-band page-head search-workspace-head" aria-labelledby="viewer-title">
       <div>
-        <h1 id="viewer-title">${query ? `“${escapeHtml(query)}” 검색 결과` : "문서"}</h1>
-        <p class="page-sub">문서명과 문서번호를 함께 해석해 위치를 빠르게 비교합니다.</p>
+        <h1 id="viewer-title">문서 검색</h1>
+        <p class="page-sub">문서번호·개정과 보관 위치를 함께 확인하세요.</p>
       </div>
       ${viewerSearchForm({ query, suggestions, categories, tags, filters: uiFilters, showFilters: false, formId: "viewer-search-form" })}
     </section>
@@ -140,17 +86,17 @@ export function dashboardPage({
       supplemental: `${parsedChipRow(parsedQuery, query)}${activeFilterChips({ query, filters: uiFilters, categories, tags, racks })}`
     })}
 
-    <section class="viewer-workspace" data-viewer-app>
+    <section class="viewer-workspace" data-viewer-app data-can-search-disposed="${capabilities.canManageDisposals ? "true" : "false"}">
       <article class="panel results-panel" aria-labelledby="viewer-results-title" data-viewer-results aria-live="polite">
         <div class="section-title viewer-results-heading">
-          <h2 id="viewer-results-title" data-results-title>${query ? `"${escapeHtml(query)}" 검색 결과` : hasExplicitViewerFilter(filters) ? "필터 검색 결과" : "최근 등록·수정 문서"}</h2>
+          <h2 id="viewer-results-title" data-results-title>보관중 문서</h2>
           <div class="viewer-result-tools">
             ${columnSettings()}
-            <span class="count-badge" data-results-count>${resultCountLabel}</span>
+            <span class="count-badge" data-results-count>${shownItems}건 표시${viewerSearch.pagination?.hasMore ? " · 더 있음" : ""}</span>
           </div>
         </div>
         <div data-results-body>
-          ${viewerDocumentResults(documents, query, capabilities, selectedDocumentIds, true)}
+          ${viewerDocumentResults(documents, query, capabilities, selectedDocumentIds, true, viewerUrl({ query, filters: uiFilters }))}
           ${!documents.length && didYouMean.length ? didYouMeanView(didYouMean) : ""}
           ${viewerPagination(viewerSearch.pagination, { query, filters })}
         </div>
@@ -203,10 +149,6 @@ function activeViewerFilterCount(filters = {}) {
   ].filter(Boolean).length;
 }
 
-function hasExplicitViewerFilter(filters = {}) {
-  return activeViewerFilterCount(filters) > 0 || Boolean(filters.sort && filters.sort !== "relevance");
-}
-
 function activeFilterBadge(filters = {}) {
   const count = activeViewerFilterCount(filters);
   return `<span class="filter-count" data-viewer-filter-count${count ? "" : " hidden"}>${count}</span>`;
@@ -238,40 +180,11 @@ function viewerLocationFilterInputs(filters = {}) {
     .join("");
 }
 
-function homeQuickLinks(categories = []) {
-  const categoryLinks = categories.slice(0, 6).map((category) =>
-    `<a class="chip" href="/app?category=${Number(category.id)}" data-viewer-set-filter="category" data-viewer-filter-value="${Number(category.id)}">${escapeHtml(category.name)}</a>`
-  ).join("");
-  if (!categoryLinks) return "";
-  return `<nav class="search-home-filter quick-filter-row" aria-label="빠른 분류"><span>빠른 분류</span>${categoryLinks}</nav>`;
-}
-
-function viewerDocumentResults(documents, query, capabilities = {}, selectedDocumentIds = [], showReset = false) {
-  if (!documents.length) {
-    return emptyResult("조건에 맞는 문서가 없습니다.", showReset ? "reset" : "");
-  }
+function viewerDocumentResults(documents, query, capabilities = {}, selectedDocumentIds = [], showReset = false, returnTo = "/app") {
+  if (!documents.length) return `<div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>조건에 맞는 문서가 없습니다.</p><div class="empty-actions">${showReset ? '<a class="button secondary sm" href="/app" data-viewer-search-reset>검색 초기화</a>' : ""}${capabilities.canManageDisposals ? '<a class="button secondary sm" href="/documents/disposal?tab=documents">폐기 문서에서 확인</a>' : ""}</div></div>`;
   const selectable = capabilities.canManageSets || capabilities.canManageDisposals;
   const selected = new Set(selectedDocumentIds.map(Number));
-  return `<div class="viewer-result-table ${selectable ? "is-selectable" : ""}" role="grid" aria-label="문서 검색 결과">
-    <div class="viewer-result-header" role="row">${selectable ? `<span class="check-col" role="columnheader"><span class="sr-only">선택</span></span>` : ""}<span role="columnheader">문서명</span><span role="columnheader">문서번호 · 개정</span><span role="columnheader">대분류</span><span role="columnheader">보관 위치</span><span role="columnheader">상태</span><span class="optional-column" data-column="revision-date" role="columnheader" hidden>제·개정일</span></div>
-    <div class="viewer-result-list" role="rowgroup">${documents.map((document) => viewerDocumentCard(document, query, selectable, selected.has(Number(document.id)))).join("")}</div>
-  </div>`;
-}
-
-function viewerDocumentCard(document, query = "", selectable = false, selected = false) {
-  const location = document.location || {};
-  const locationText = location.label || "위치 미지정";
-  return `
-    <article class="viewer-result-row ${selectable ? "is-selectable" : ""} ${document.status !== "active" ? "is-disposed" : ""}" role="row" tabindex="0" aria-selected="false" data-document-row data-document-url="/documents/${document.id}" data-document-name="${escapeHtml(document.documentName || "문서명 없음")}" data-document-number="${escapeHtml(document.documentNumber || "")}" data-document-revision="${escapeHtml(document.revisionLabel || document.revisionNumber || "N/A")}" data-document-category="${escapeHtml(document.categoryName || "-")}" data-document-location="${escapeHtml(locationText)}" data-document-status="${document.status === "active" ? "보관중" : "폐기"}">
-      ${selectable ? `<span class="check-col" role="cell" data-label="선택"><label class="bulk-check-target"><input type="checkbox" value="${Number(document.id)}" data-bulk-item aria-label="${escapeHtml(document.documentName || document.documentNumber)} 선택"${selected ? " checked" : ""}></label></span>` : ""}
-      <span class="viewer-result-name" role="cell" data-label="문서명"><a href="/documents/${document.id}" data-doc-click="${document.id}">${highlight(document.documentName || "문서명 없음", query)}</a></span>
-      <span class="mono" role="cell" data-label="문서번호/개정"><span class="viewer-result-value">${highlight(document.documentNumber, query)} <small>${escapeHtml(document.revisionLabel || document.revisionNumber || "N/A")}</small></span></span>
-      <span class="viewer-result-detail-only" role="cell" data-label="대분류">${escapeHtml(document.categoryName || "-")}</span>
-      <span class="viewer-result-location viewer-result-detail-only" role="cell" data-label="보관 위치">${escapeHtml(locationText)}</span>
-      <span class="viewer-result-detail-only" role="cell" data-label="상태">${statusBadge(document.status)}</span>
-      <span class="optional-column viewer-result-detail-only" data-column="revision-date" role="cell" data-label="제·개정일" hidden>${escapeHtml(document.revisionDate || "-")}</span>
-    </article>
-  `;
+  return resultTable(documents.map((item) => resultRow(item, { selectable, selected: selected.has(Number(item.id)), query, returnTo }, escapeHtml, highlight)).join(""), selectable);
 }
 
 function columnSettings() {
@@ -279,13 +192,15 @@ function columnSettings() {
 }
 
 function workspacePreview() {
-  return `<aside class="panel viewer-preview" data-document-preview hidden aria-live="polite">
-    <div class="section-title"><h2>빠른 미리보기</h2><button type="button" class="icon-button" data-preview-close aria-label="미리보기 닫기">×</button></div>
-    <strong data-preview-name></strong>
-    <p class="mono" data-preview-number></p>
-    <dl><div><dt>대분류</dt><dd data-preview-category></dd></div><div><dt>보관 위치</dt><dd data-preview-location></dd></div><div><dt>상태</dt><dd data-preview-status></dd></div></dl>
+  return `<dialog class="viewer-preview panel" aria-labelledby="preview-title" data-document-preview>
+    <div class="section-title"><h2 id="preview-title">빠른 보기</h2><button type="button" class="icon-button" data-preview-close aria-label="미리보기 닫기">×</button></div>
+    <strong data-preview-name></strong><p class="mono" data-preview-number></p>
+    <div class="preview-location"><small>보관 위치</small><strong data-preview-location></strong></div>
+    <div class="preview-rack" data-preview-rack aria-label="해당 면의 열과 선반"></div>
+    <p class="muted">해당 면을 바라본 기준으로 왼쪽부터 1열 · 아래부터 1선반</p>
+    <dl><div><dt>대분류</dt><dd data-preview-category></dd></div><div><dt>상태</dt><dd data-preview-status></dd></div></dl>
     <a class="button" href="/app" data-preview-link>문서 상세 열기</a>
-  </aside>`;
+  </dialog>`;
 }
 
 function workspaceBulkActions({ capabilities, editableSets = [], returnTo }) {

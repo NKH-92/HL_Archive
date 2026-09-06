@@ -79,8 +79,8 @@ test("disposal workspace renders target/history tabs and a review-first disposal
   assert.match(html, /bulk-select-all-text">현재 목록 전체 선택<\/span>/);
   assert.match(APP_STYLES, /\.doc-table\.is-bulk-selectable thead \{ display: block; \}/);
   assert.match(html, /data-bulk-item/);
-  assert.match(html, />진행 중<\/a>/);
-  assert.match(html, />캠페인 이력<\/a>/);
+  assert.match(html, />폐기 대상<\/a>/);
+  assert.match(html, />정기폐기 작업<\/a>/);
   assert.match(html, />폐기 문서<\/a>/);
   assert.match(html, /href="\/disposal-batches\/new">정기폐기 시작<\/a>/);
   assert.match(html, /action="\/documents\/disposal\/process"/);
@@ -248,7 +248,7 @@ test("document form groups metadata, previews values, and progressively enhances
   assert.match(html, /data-form-completion/);
   assert.match(html, /data-location-selection-count/);
   assert.match(html, /같은 위치 문서 보기/);
-  assert.match(html, /beforeunload/);
+  assert.match(APP_SCRIPT, /beforeunload/);
   assert.match(html, /\/api\/documents\/duplicate/);
   assert.ok(html.indexOf("var current = ++requestId;") < html.indexOf("if (!number || !revision || !notice)"));
   for (const script of [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1])) {
@@ -372,16 +372,16 @@ test("dashboard page renders search-first row results without a floor plan", asy
   assert.doesNotMatch(main, /문서고 도면|Archive\.png|floor-plan|data-answer-card/);
   assert.doesNotMatch(main, /문서번호 부분 일치/);
   assert.match(html, /viewer-result-header/);
-  for (const label of ["문서명", "문서번호 · 개정", "대분류", "보관 위치", "상태", "제·개정일"]) {
+  for (const label of ["문서명 · 문서번호 · 개정", "대분류", "보관 위치", "제·개정일"]) {
     assert.match(html, new RegExp(">" + label + "<"));
   }
   // 키보드로 행을 이동하고 선택하므로 grid가 열 이름과 선택 상태를 함께 전달해야 한다.
-  const viewerHeader = html.match(/<div class="viewer-result-header"[\s\S]*?<\/div>/)?.[0] || "";
-  assert.match(html, /role="grid" aria-label="문서 검색 결과"/);
-  assert.match(html, /role="row" tabindex="0" aria-selected="false"/);
-  assert.equal((viewerHeader.match(/role="columnheader"/g) || []).length, 6);
-  assert.equal((html.match(/class="[^"]*viewer-result-detail-only[^"]*" role="cell"/g) || []).length, 3);
-  assert.match(html, /class="optional-column viewer-result-detail-only"[^>]*data-label="제·개정일"/);
+  const viewerHeader = html.match(/<tr class="viewer-result-header"[\s\S]*?<\/tr>/)?.[0] || "";
+  assert.match(html, /<table aria-label="문서 검색 결과"/);
+  assert.match(html, /data-document-row data-document-id=/);
+  assert.equal((viewerHeader.match(/scope="col"/g) || []).length, 5);
+  assert.doesNotMatch(html, /viewer-result-detail-only/);
+  assert.match(html, /class="optional-column"[^>]*data-label="제·개정일"/);
   assert.match(html, /<mark>PV<\/mark>/, "검색어 일치 부분이 하이라이트된다");
   assert.match(APP_SCRIPT, /window\.SearchCore/, "즉시 검색 코어가 정적 자산에 포함된다");
   assert.doesNotMatch(html, /<select name="status"/);
@@ -430,11 +430,11 @@ test("dashboard home mode uses a search-first operational hero without a floor p
   const html = await response.text();
   const main = html.match(/<main[^>]*>([\s\S]*?)<\/main>/)?.[1] || "";
 
-  assert.match(html, /data-search-home/);
+  assert.match(html, /search-workspace-head/);
   assert.match(html, /data-viewer-form/);
   assert.match(html, /id="viewer-search-form"/);
-  assert.match(main, /search-home-hero/);
-  assert.match(main, /문서를 빠르게 찾으세요/);
+  assert.doesNotMatch(main, /search-home-hero/);
+  assert.match(main, /문서 검색/);
   assert.match(main, /data-viewer-filter-controls/);
   for (const name of ["category", "tag", "zone", "sort"]) {
     assert.match(main, new RegExp(`<select name="${name}" form="viewer-search-form">`));
@@ -442,13 +442,13 @@ test("dashboard home mode uses a search-first operational hero without a floor p
   assert.match(html, /id="viewer-filter-dialog"/);
   assert.match(html, /data-mobile-viewer-filter/);
   assert.match(html, /data-viewer-filter-reset/);
-  assert.match(html, /data-viewer-set-filter="category"/);
+  assert.match(html, /data-active-filter-chips/);
   assert.doesNotMatch(html, /name="(?:rack|column|shelf)" value="0"/);
-  assert.match(html, /최근 등록·수정 문서/);
+  assert.match(html, /보관중 문서/);
   assert.doesNotMatch(html, /data-results-count>null건</);
-  assert.match(html, /data-viewer-app>/);
+  assert.match(html, /data-viewer-app /);
   assert.doesNotMatch(html, /data-viewer-app hidden/);
-  assert.match(html, /aria-label="빠른 분류"/);
+  assert.match(html, /aria-label="검색 조건"/);
   assert.doesNotMatch(main, /home-floor-plan|문서고 도면|data-rack-code/);
   assert.doesNotMatch(html, /자주 찾는 문서/, "자주 찾는 문서 기능은 제거되었다");
   assert.match(APP_SCRIPT, /window\.SearchCore/);
@@ -501,11 +501,11 @@ test("document workspace exposes permission-scoped selection actions and five de
   assert.match(html, /action="\/documents\/disposal\/process"/);
   assert.match(html, /data-document-preview/);
   assert.match(html, /data-column-toggle="revision-date"/);
-  assert.match(html, /<span role="columnheader">문서번호 · 개정<\/span>/);
-  assert.match(html, /data-column="revision-date" role="columnheader" hidden>제·개정일/);
+  assert.match(html, /<th scope="col">문서명 · 문서번호 · 개정<\/th>/);
+  assert.match(html, /data-column="revision-date" hidden>제·개정일/);
   assert.doesNotMatch(html, /data-bulk-select-all|현재 목록 선택/);
-  assert.match(html, /role="grid" aria-label="문서 검색 결과"/);
-  assert.match(html, /role="row" tabindex="0" aria-selected="false"/);
+  assert.match(html, /<table aria-label="문서 검색 결과"/);
+  assert.match(html, /data-document-row data-document-id=/);
   assert.equal((html.match(/data-workspace-return-to/g) || []).length, 2);
 });
 
@@ -582,7 +582,7 @@ test("unknown filter totals keep visible rows and announce that more results exi
 
   assert.match(html, /1건을 표시했습니다\. 다음 결과가 더 있습니다\./);
   assert.doesNotMatch(html, /검색 결과가 없습니다/);
-  assert.match(html, /data-results-count>1\+건</);
+  assert.match(html, /data-results-count>1건 표시 · 더 있음</);
 });
 
 test("home mode keeps visible rows when the fast total is unknown", async () => {
@@ -606,8 +606,8 @@ test("home mode keeps visible rows when the fast total is unknown", async () => 
     filters: { status: "active", sort: "updated" }
   }).text();
 
-  assert.match(html, /최근 등록·수정 문서 1건을 표시합니다\. 다음 결과가 더 있습니다\./);
-  assert.match(html, /data-results-count>1\+건</);
+  assert.match(html, /1건을 표시했습니다\. 다음 결과가 더 있습니다\./);
+  assert.match(html, /data-results-count>1건 표시 · 더 있음</);
   assert.doesNotMatch(html, /보관 중인 문서가 없습니다/);
 });
 

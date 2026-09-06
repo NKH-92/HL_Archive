@@ -1,3 +1,4 @@
+import * as HanlimResults from "../src/views/searchResultMarkup.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import vm from "node:vm";
@@ -101,9 +102,12 @@ async function renderBrowser(items, query) {
   const resultsCount = { textContent: "" };
   const viewerApp = {
     hidden: false,
+    dataset: {},
+    setAttribute() {},
     classList: { contains() { return false; } }
   };
   const viewerForm = {
+    addEventListener() {},
     querySelector(selector) {
       if (selector === 'input[name="q"]') return input;
       if (selector === 'select[name="status"]') return { value: "active" };
@@ -121,6 +125,8 @@ async function renderBrowser(items, query) {
     ["[data-results-count]", resultsCount]
   ]);
   const document = {
+    body: { dataset: {} },
+    dispatchEvent() {},
     addEventListener(type, handler) {
       listeners[type] = handler;
     },
@@ -157,6 +163,9 @@ async function renderBrowser(items, query) {
   };
   sandbox.window = sandbox;
   sandbox.SearchCore = browserSearchCore;
+  sandbox.HanlimResults = HanlimResults;
+  sandbox.Event = Event;
+  sandbox.addEventListener = () => {};
 
   const context = vm.createContext(sandbox);
   vm.runInContext(clientScript(), context);
@@ -180,21 +189,18 @@ test("server and browser keep the exact-code row fields and key markup", async (
   assert.doesNotMatch(browser.html, /data-answer-card/);
   assert.match(serverHtml, /viewer-result-table/);
   assert.match(browser.html, /^<div class="viewer-result-table"/);
-  assert.match(serverHtml, /role="grid" aria-label="문서 검색 결과"/);
-  assert.match(browser.html, /role="grid" aria-label="문서 검색 결과"/);
-  assert.match(serverHtml, /role="row" tabindex="0" aria-selected="false"/);
-  assert.match(browser.html, /role="row" tabindex="0" aria-selected="false"/);
-  assert.match(serverHtml, /href="\/documents\/7" data-doc-click="7">충전 공정 밸리데이션 보고서<\/a>/);
-  assert.match(browser.html, /href="\/documents\/7" data-doc-click="7">충전 공정 밸리데이션 보고서<\/a>/);
-  const expectedNumber = '<span class="mono" role="cell" data-label="문서번호/개정"><span class="viewer-result-value"><mark>PV</mark>-<mark>2026</mark>-<mark>014</mark> <small>Rev.1</small></span></span>';
-  assert.match(serverHtml, new RegExp(expectedNumber));
-  assert.match(browser.html, new RegExp(expectedNumber));
-  assert.match(serverHtml, /viewer-result-detail-only" role="cell" data-label="대분류">PV<\/span>/);
-  assert.match(browser.html, /viewer-result-location viewer-result-detail-only" role="cell" data-label="보관 위치">1구역 \/ 1-1번 랙 \/ 2열 \/ 3선반<\/span>/);
-  assert.match(serverHtml, /status document-active">보관중/);
-  assert.match(browser.html, /status document-active">보관중/);
-  assert.equal(browser.title, `"${query}" 검색 결과`);
-  assert.equal(browser.count, "1건");
+  for (const html of [serverHtml, browser.html]) {
+    assert.match(html, /<table aria-label="문서 검색 결과">/);
+    assert.doesNotMatch(html, /role="grid"|tabindex="0"|aria-selected/);
+    assert.match(html, /data-doc-click="7">충전 공정 밸리데이션 보고서<\/a>/);
+    assert.match(html, /<small>Rev.1<\/small>/);
+    assert.match(html, /<mark>PV<\/mark>-<mark>2026<\/mark>-<mark>014<\/mark>/);
+    assert.match(html, /viewer-result-category" data-label="대분류">PV<\/td>/);
+    assert.match(html, /data-label="보관 위치">1구역 \/ 1-1번 랙 \/ 2열 \/ 3선반<\/td>/);
+    assert.match(html, /data-preview-open/);
+  }
+  assert.equal(browser.title, "보관중 문서");
+  assert.equal(browser.count, "1건 표시");
 });
 
 test("server and browser always keep row-only behavior for dominant and ambiguous matches", async () => {

@@ -56,15 +56,16 @@ export function documentSnapshotPage({ session, state, snapshots = [], error = "
     <section class="panel snapshot-context-grid" aria-label="엑셀 동기화 기준과 권한">
       <div><span>현재 대장 버전</span><strong>V${number(state.currentVersion)}</strong><small>${escapeHtml(state.updatedAt || "초기 상태")} 기준</small></div>
       <div><span>선택 파일 기준 버전</span><strong data-excel-base-version>선택 전</strong><small data-excel-latest>최신 여부 확인 전</small></div>
-      <div><span>내보낸 시각</span><strong data-excel-exported-at>선택 전</strong><small>관리 파일의 시스템 정보</small></div>
-      <div><span>내 권한</span><strong>검증 가능 · ${canApply ? "적용 가능" : "적용 권한 없음"}</strong><small>서버가 최종 적용 권한을 다시 확인합니다.</small></div>
+      <div><span>내보낸 시각</span><strong data-excel-exported-at>선택 전</strong><small>선택 파일을 추출한 시각</small></div>
+      <div><span>내 권한</span><strong>검증 가능 · ${canApply ? "적용 가능" : "적용 권한 없음"}</strong><small>${canApply ? "변경사항 검토 후 직접 반영할 수 있습니다." : "검증 후 반영 권한이 있는 담당자에게 요청하세요."}</small></div>
     </section>
+    <div class="alert warning" role="note"><strong>일부 변경 목록이 아닌 전체 현재 대장을 올려주세요.</strong><p>파일에서 빠진 문서는 현재 대장에서 제외될 수 있습니다. 파일 선택과 검증만으로는 대장이 바뀌지 않으며, 변경 내역을 확인한 뒤 명시적으로 반영합니다.</p></div>
     ${workflowStepper(1)}
     <section id="excel-full-sync" class="panel snapshot-intro snapshot-upload-panel" data-excel-snapshot data-current-version="${Number(state.currentVersion)}" data-current-snapshot-id="${Number(state.currentSnapshotId || 0)}" data-apply-mode="${escapeHtml(applyMode)}">
       <div>
         <h2>엑셀 전체 동기화</h2>
         <p>최신 대장을 추출해 수정한 파일을 올리세요. 파일 전체를 검증하고 추가·변경·제외 내역을 먼저 보여준 뒤 확인할 때만 반영합니다.</p>
-        <form class="stack" data-excel-snapshot-upload>
+        <form class="stack" data-excel-snapshot-upload data-dirty-form>
           <label>동기화 사유 (10~500자)
             <textarea name="syncReason" required minlength="10" maxlength="500" rows="3" placeholder="예: 2026년 정기 문서고 대장 현행화"></textarea>
           </label>
@@ -73,7 +74,7 @@ export function documentSnapshotPage({ session, state, snapshots = [], error = "
             <input type="file" name="excelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
           </label>
           <div class="snapshot-file-summary" data-excel-file-summary hidden></div>
-          <div class="alert warning" data-excel-stale-warning hidden>현재 버전보다 오래된 관리 파일입니다. 최신 대장을 다시 내보내 작업하세요. 최종 판정은 서버 검증이 수행합니다.</div>
+          <div class="alert warning" data-excel-stale-warning hidden>현재 버전보다 오래된 관리 파일입니다. 최신 대장을 다시 내보내 작업하세요. 수정 전 최신 파일을 추출해 주세요.</div>
           <progress class="snapshot-progress" data-excel-progress data-excel-progress-bar aria-label="엑셀 전송 진행률" max="100" value="0" hidden></progress>
           <p class="muted" data-excel-message aria-live="polite">시스템에서 추출한 관리 파일(_시스템정보 포함)을 권장합니다. 일상 변경은 최대 1,000건, 최초 연결은 최대 30,000건이며 시스템이 자동 분할합니다.</p>
           <div class="alert info" data-excel-recovery role="status" hidden></div>
@@ -91,23 +92,22 @@ export function documentSnapshotPage({ session, state, snapshots = [], error = "
               <thead><tr><th>행</th><th>필드</th><th>코드</th><th>오류</th></tr></thead><tbody></tbody>
             </table></div>
           </section>
-          <button type="submit" class="action-button" data-excel-upload-button>검증 후 변경 내역 만들기</button>
+          <button type="submit" class="action-button" data-excel-upload-button>파일 검증 및 변경사항 확인</button>
         </form>
       </div>
     </section>
-    <section class="panel">
-      <div class="section-title"><h2>운영 원칙</h2><span class="count-badge">안전 동기화</span></div>
+    <details class="panel snapshot-help"><summary>입력 방법과 운영 도움말</summary>
       <ul class="snapshot-rules">
         <li>오류가 한 건이라도 있으면 현재 문서대장은 변경하지 않습니다.</li>
         <li>랙 위치는 랙과 면에 관계없이 해당 면을 바라본 기준으로 왼쪽부터 1열, 아래부터 1선반을 입력합니다.</li>
         <li>엑셀에서 사라진 문서는 삭제 대신 대장에서 제외해 감사·세트·이동 이력을 보존합니다.</li>
         <li>시스템에서 개별 처리한 추가·정보 수정·개정·위치 이동·폐기는 다음 엑셀 추출과 인쇄용 관리대장에 포함됩니다.</li>
-        <li>개정번호는 숫자만 입력하며 화면에서는 Rev.가 붙습니다. 공란 또는 N/A는 DB에 NULL로 저장되고 검색 화면과 다음 추출에서는 N/A로 표시됩니다.</li>
+        <li>개정번호는 숫자만 입력하며 화면에서는 Rev.가 붙습니다. 개정번호가 없으면 공란 또는 N/A로 입력하세요. 검색과 다음 추출에는 N/A로 표시됩니다.</li>
         <li>개정 이력의 문서번호·개정번호 변경과 자동 폐기된 이전본의 복원은 엑셀로 처리할 수 없습니다.</li>
         <li>최종 반영은 전용 권한과 위치·폐기 권한이 필요할 수 있습니다.</li>
         <li>추출 후 시스템에서 건별 작업이 발생하면 기존 엑셀은 오래된 파일이 되므로 최신 대장을 다시 추출해야 합니다.</li>
       </ul>
-    </section>
+    </details>
     <section class="panel results-panel">
       <div class="section-title"><h2>최근 동기화</h2><span class="count-badge">${snapshots.length}건</span></div>
       <div class="table-wrap"><table class="doc-table">

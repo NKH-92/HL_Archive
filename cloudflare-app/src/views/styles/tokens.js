@@ -47,6 +47,13 @@ export function tokenStyles() {
       --sp-5: 20px;
       --sp-6: 24px;
       --sp-8: 32px;
+      --text-title: 22px;
+      --text-section: 16px;
+      --text-body: 14px;
+      --text-meta: 12.5px;
+      --control-height: 40px;
+      --touch-height: 44px;
+      --preview-width: 320px;
       --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
     }`;
 }

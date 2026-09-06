@@ -51,6 +51,13 @@ const expectedTokens = {
   "--sp-5": "20px",
   "--sp-6": "24px",
   "--sp-8": "32px",
+  "--text-title": "22px",
+  "--text-section": "16px",
+  "--text-body": "14px",
+  "--text-meta": "12.5px",
+  "--control-height": "40px",
+  "--touch-height": "44px",
+  "--preview-width": "320px",
   "--font-mono": "ui-monospace, \"Cascadia Code\", \"SF Mono\", Consolas, monospace"
 };
 
@@ -110,17 +117,17 @@ test("전역 CSS는 desktop·mobile·print·reduced-motion 계약을 포함한�
   assert.match(css, /\.search-home \.search-results-controls \{ margin-top: 0; \}/);
   assert.doesNotMatch(css, /\.viewer-search-form\.is-home \.filter-details \{ display: none; \}/);
   assert.match(css, /\.metric-strip \{ display: grid; grid-template-columns: repeat\(auto-fit/);
-  assert.match(css, /@media \(min-width: 1180px\)/);
+  assert.match(css, /\.viewer-workspace\.has-preview/);
   assert.doesNotMatch(css, /@media \(min-width: 1181px\)/);
   assert.match(css, /\.command-palette-list a\.is-active/);
   assert.match(css, /\.floor-rack-search \{ flex: 0 1 auto; width: 100%; max-width: none; \}/);
   assert.match(css, /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="hidden"\]\), select, textarea \{ min-height: 44px; font-size: 16px; \}/);
   assert.match(css, /input\[type="checkbox"\], input\[type="radio"\] \{ flex: none; width: 20px; min-width: 20px; min-height: 20px; padding: 0; justify-self: start; \}/);
-  assert.match(css, /\.viewer-result-table\.is-selectable \.viewer-result-row,[\s\S]*grid-template-columns: 1fr/);
-  assert.match(css, /\.viewer-result-row > \.viewer-result-detail-only \{ display: none; \}/);
-  assert.match(css, /\.viewer-result-row > \.check-col \{ position: absolute;[^}]*width: 44px;[^}]*min-height: 44px; \}/);
-  assert.match(css, /\.viewer-result-name a \{ display: -webkit-box;[^}]*-webkit-line-clamp: 2; \}/);
-  assert.match(css, /\.viewer-result-row \.mono \.viewer-result-value \{ min-width: 0; white-space: nowrap; overflow-wrap: normal; \}/);
+  assert.match(css, /\.viewer-result-table \.viewer-result-row[\s\S]*display: flex/);
+  assert.match(css, /\.viewer-result-row \.viewer-result-location \{ width: 100%; \}/);
+  assert.match(css, /\.viewer-result-table \.viewer-result-row \.check-col \{ position: absolute;[^}]*width: var\(--touch-height\)/);
+  assert.match(css, /\.viewer-result-name a \{ display: block; overflow: visible; -webkit-line-clamp: unset; \}/);
+  assert.match(css, /\.viewer-result-identity \{ display: flex; flex-wrap: wrap;/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.workflow-stepper \{ grid-template-columns: repeat\(5, minmax\(0, 1fr\)\);[^}]*overflow: hidden/);
   assert.match(css, /\.workflow-current-step \{ display: grid; grid-template-columns: auto minmax\(0, 1fr\)/);
   assert.match(css, /\.mini-rack-grid \{ inline-size: 100%; min-inline-size: 0; grid-template-columns: repeat\(var\(--cols\), minmax\(0, 1fr\)\)/);

@@ -1,5 +1,6 @@
 // 문서 위치 이동 전용 화면과 전역 이동 이력.
 
+import { documentLink } from "../shared/documents/navigation.js";
 import { hasReadPermission, PERMISSIONS } from "../permissions.js";
 import { locationLabel } from "../domains/racks/index.js";
 import { escapeHtml } from "../ui/html/escape.js";
@@ -17,16 +18,17 @@ export function movementFormPage({ session, document, slots, movements = [], err
   return page("문서 위치 이동", `
     <section class="page-head">
       <div><h1>문서 위치 이동</h1><p class="page-sub">${escapeHtml(document.document_number)} · ${escapeHtml(document.document_name)}</p></div>
-      <a class="button secondary" href="/documents/${document.id}">문서 상세</a>
+      <a class="button secondary" href="${escapeHtml(documentLink(document.id, "", values.returnTo))}">문서 상세</a>
     </section>
-    ${error ? alertDanger(error) : ""}
+    ${error ? `<div class="form-error-summary" data-error-summary role="alert" tabindex="-1">${escapeHtml(error)}</div>` : ""}
     <section class="locator-hero movement-current">
       <div><small>현재 위치</small><strong class="loc-label-lg">${escapeHtml(currentLocation)}</strong></div>
     </section>
     <section class="panel narrow">
       <form method="post" action="/documents/${document.id}/move" class="stack" data-movement-form>
-        <input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(document.updated_at)}">
-        <input type="hidden" name="expectedRowVersion" value="${escapeHtml(document.row_version)}">
+        <input type="hidden" name="returnTo" value="${escapeHtml(values.returnTo || "")}">
+        <input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(values.expectedUpdatedAt ?? document.updated_at)}">
+        <input type="hidden" name="expectedRowVersion" value="${escapeHtml(values.expectedRowVersion ?? document.row_version)}">
         ${locationPicker(slots, selectedSlot)}
         <label>보관 면 <em>*</em><select name="rackFace" required data-rack-face>${option("A", "1면", selectedFace)}${option("B", "2면", selectedFace)}</select></label>
         <label>이동 사유 <em>*</em><textarea name="reason" rows="3" maxlength="500" required placeholder="예: 1구역 재배치에 따른 위치 변경">${escapeHtml(values.reason || "")}</textarea></label>

@@ -128,26 +128,6 @@ export function responsivePrintStyles() {
       .snapshot-context-grid > div:nth-child(2) { border-right: 0; }
       .snapshot-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .snapshot-apply-row { flex-direction: column; align-items: stretch; }
-      .viewer-result-table { overflow: visible; }
-      .viewer-result-header { display: none; }
-      .viewer-result-row,
-      .viewer-result-table.is-selectable .viewer-result-row,
-      .viewer-result-table.show-revision-date .viewer-result-row,
-      .viewer-result-table.is-selectable.show-revision-date .viewer-result-row { position: relative; min-width: 0; grid-template-columns: 1fr; gap: 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); cursor: pointer; }
-      .viewer-results-heading { align-items: stretch; flex-direction: column; }
-      .viewer-result-tools { width: 100%; margin-left: 0; flex-wrap: wrap; justify-content: space-between; }
-      .viewer-result-list { gap: var(--sp-3); border-top: 0; }
-      .viewer-result-row > span { display: block; padding: 0; border: 0; }
-      .viewer-result-row > span::before { content: none; }
-      .viewer-result-row > .viewer-result-detail-only { display: none; }
-      .viewer-result-row > .viewer-result-name { padding-right: var(--sp-4); }
-      .viewer-result-row > .mono { margin-top: var(--sp-1); color: var(--gray-600); font-size: 12.5px; }
-      .viewer-result-row.is-selectable { padding-right: calc(var(--sp-3) + 44px); }
-      .viewer-result-row > .check-col { position: absolute; top: var(--sp-2); right: var(--sp-2); width: 44px; min-height: 44px; }
-      .viewer-result-row .mono .viewer-result-value { min-width: 0; white-space: nowrap; overflow-wrap: normal; }
-      .bulk-select-all-label { min-height: 44px; }
-      .viewer-result-name a { display: -webkit-box; overflow: hidden; font-size: 14px; line-height: 1.45; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-      .column-settings { display: none; }
       .doc-table-wrap { overflow: visible; }
       .doc-table, .doc-table tbody { display: block; width: 100%; }
       .doc-table thead { display: none; }

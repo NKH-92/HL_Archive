@@ -79,8 +79,8 @@ export function disposalWorkspacePage({
     ` : ""}
     ${disposalFeedback(feedback)}
     <nav class="workspace-tabs" aria-label="폐기 작업 화면">
-      <a href="${escapeHtml(disposalListUrl(filters))}" ${tab === "active" ? `aria-current="page"` : ""}>진행 중</a>
-      <a href="/documents/disposal?tab=history" ${tab === "history" ? `aria-current="page"` : ""}>캠페인 이력</a>
+      <a href="${escapeHtml(disposalListUrl(filters))}" ${tab === "active" ? `aria-current="page"` : ""}>폐기 대상</a>
+      <a href="/documents/disposal?tab=history" ${tab === "history" ? `aria-current="page"` : ""}>정기폐기 작업</a>
       <a href="/documents/disposal?tab=documents" ${tab === "documents" ? `aria-current="page"` : ""}>폐기 문서</a>
     </nav>
     ${tab === "history"

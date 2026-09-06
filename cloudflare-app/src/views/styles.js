@@ -1,5 +1,6 @@
 // page()의 기존 import 경로와 CSS 출력 순서를 유지하는 전역 스타일 호환 파사드.
 
+import { workspaceStyles } from "./styles/workspace.js";
 import { iconStyles } from "./icons.js";
 import { adminStyles } from "./styles/admin.js";
 import { baseStyles } from "./styles/base.js";
@@ -20,7 +21,8 @@ const styleFragments = Object.freeze([
   workflowStyles,
   searchHomeStyles,
   experienceStyles,
-  responsivePrintStyles
+  responsivePrintStyles,
+  workspaceStyles
 ]);
 
 export function styles() {

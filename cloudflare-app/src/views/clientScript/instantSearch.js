@@ -1,7 +1,17 @@
 // 전역 클라이언트 스크립트의 즉시 검색 조각. 대용량 전환부터 브라우저 전체 인덱스를 받지 않는다.
 
 export function instantSearchScript() {
-  return `      // 서버 즉시 검색: Core projection 후보 → Core 재검증 → 최대 30건 cursor 응답.
+  return `      var normalizeSearchStateUrl = function (value) {
+        var url = new URL(value, 'https://archive.local');
+        var params = new URLSearchParams();
+        ['q','category','tag','zone','rack','face','column','shelf','sort'].forEach(function (key) {
+          var value = url.searchParams.get(key);
+          if (key === 'sort' && !value) value = viewerForm?.elements?.namedItem('sort')?.value || '';
+          if (value && !(key === 'sort' && value === 'relevance')) params.set(key, value);
+        });
+        return '/app' + (params.size ? '?' + params.toString() : '');
+      };
+      // 서버 즉시 검색: Core projection 후보 → Core 재검증 → 최대 30건 cursor 응답.
       var viewerApp = document.querySelector('[data-viewer-app]');
       var viewerForm = document.querySelector('[data-viewer-form]');
       var viewerInput = viewerForm ? viewerForm.querySelector('input[name="q"]') : null;
@@ -10,7 +20,6 @@ export function instantSearchScript() {
         var resultsTitle = document.querySelector('[data-results-title]');
         var resultsCount = document.querySelector('[data-results-count]');
         var searchLive = document.querySelector('[data-search-live]');
-        var homeExtras = document.querySelector('[data-home-extras]');
         var activeFilterChips = document.querySelector('[data-active-filter-chips]');
         var parsedFilterChips = document.querySelector('[data-parsed-filter-chips]');
         var mobileFilterForm = document.querySelector('[data-mobile-viewer-filter]');
@@ -18,16 +27,30 @@ export function instantSearchScript() {
         var viewerContextElement = document.querySelector('[data-viewer-context]');
         var viewerContext = { categories: [], tags: [], racks: [], explicitFilters: {} };
         try { viewerContext = JSON.parse(viewerContextElement?.textContent || '{}'); } catch {}
-        var isHomeMode = viewerApp.classList.contains('is-home');
         var workspaceSelectable = Boolean(document.querySelector('[data-document-selection]'));
-        var initialResults = {
-          body: resultsBody ? resultsBody.innerHTML : '',
-          title: resultsTitle ? resultsTitle.textContent : '',
-          count: resultsCount ? resultsCount.textContent : '',
-          status: searchLive ? searchLive.textContent : ''
-        };
         var renderTimer = null;
         var activeRequest = null;
+        var searchSequence = 0;
+        var composing = false;
+        var retryCursor = '';
+        var restoreState = null;
+        var returnStateKey = 'hanlimSearchReturn:' + (document.body?.dataset.navigationScope || '');
+        try {
+          var savedSearch = JSON.parse(sessionStorage.getItem(returnStateKey) || 'null');
+          if (savedSearch && normalizeSearchStateUrl(savedSearch.url) === normalizeSearchStateUrl(location.pathname + location.search) && Date.now() - savedSearch.time < 1800000) restoreState = savedSearch;
+          sessionStorage.removeItem(returnStateKey);
+        } catch {}
+        var resetSearchSelection = function () {
+          document.dispatchEvent(new Event('hanlim:search-change'));
+          document.querySelectorAll('[data-bulk-item]:checked').forEach(function (item) { item.checked = false; });
+          syncBulk();
+        };
+        var invalidateSearch = function () {
+          searchSequence += 1;
+          if (activeRequest) activeRequest.abort();
+          restoreState = null;
+          resetSearchSelection();
+        };
         var currentCursor = '';
         var currentItems = [];
         var filterNames = ['category','tag','zone','status','sort','rack','face','column','shelf'];
@@ -47,17 +70,6 @@ export function instantSearchScript() {
           syncBulk();
         };
 
-        var restoreInitial = function () {
-          if (activeRequest) activeRequest.abort();
-          currentCursor = ''; currentItems = [];
-          replaceResults(initialResults.body, false);
-          if (resultsTitle) resultsTitle.textContent = initialResults.title;
-          if (resultsCount) resultsCount.textContent = initialResults.count;
-          if (searchLive) searchLive.textContent = initialResults.status;
-          if (homeExtras) homeExtras.hidden = false;
-          if (isHomeMode) viewerApp.hidden = false;
-        };
-
         var formControl = function (form, name) {
           if (!form) return null;
           var control = form.elements?.namedItem?.(name);
@@ -72,13 +84,6 @@ export function instantSearchScript() {
         var setFormValue = function (form, name, value) {
           var control = formControl(form, name);
           if (control && typeof control.value === 'string') control.value = value;
-        };
-
-        var hasActiveSearchCriteria = function () {
-          if (viewerInput.value.trim()) return true;
-          if (['category','tag','zone','rack','face','column','shelf'].some(function (name) { return Boolean(formValue(name)); })) return true;
-          if (formValue('status') && formValue('status') !== 'active') return true;
-          return Boolean(formValue('sort') && formValue('sort') !== 'relevance');
         };
 
         var explicitFilterContext = function () {
@@ -226,22 +231,7 @@ export function instantSearchScript() {
         };
 
         var resultRow = function (item, query) {
-          var location = item.location || {};
-          var disposed = item.status === 'disposed';
-          var itemName = item.documentName || '문서명 없음';
-          var itemNumber = item.documentNumber || '';
-          var itemRevision = item.revisionLabel || item.revisionNumber || 'N/A';
-          var itemCategory = item.categoryName || '-';
-          var itemLocation = location.label || '위치 미지정';
-          return '<article class="viewer-result-row' + (workspaceSelectable ? ' is-selectable' : '') + (disposed ? ' is-disposed' : '') + '" role="row" tabindex="0" aria-selected="false" data-document-row data-document-url="/documents/' + Number(item.id) + '" data-document-name="' + escapeHtmlClient(itemName) + '" data-document-number="' + escapeHtmlClient(itemNumber) + '" data-document-revision="' + escapeHtmlClient(itemRevision) + '" data-document-category="' + escapeHtmlClient(itemCategory) + '" data-document-location="' + escapeHtmlClient(itemLocation) + '" data-document-status="' + (disposed ? '폐기' : '보관중') + '">' +
-            (workspaceSelectable ? '<span class="check-col" role="cell" data-label="선택"><label class="bulk-check-target"><input type="checkbox" value="' + Number(item.id) + '" data-bulk-item aria-label="' + escapeHtmlClient(itemName) + ' 선택"></label></span>' : '') +
-            '<span class="viewer-result-name" role="cell" data-label="문서명"><a href="/documents/' + Number(item.id) + '" data-doc-click="' + Number(item.id) + '">' + window.SearchCore.highlightHtml(itemName, query, escapeHtmlClient) + '</a></span>' +
-            '<span class="mono" role="cell" data-label="문서번호/개정"><span class="viewer-result-value">' + window.SearchCore.highlightHtml(itemNumber, query, escapeHtmlClient) + ' <small>' + escapeHtmlClient(itemRevision) + '</small></span></span>' +
-            '<span class="viewer-result-detail-only" role="cell" data-label="대분류">' + escapeHtmlClient(itemCategory) + '</span>' +
-            '<span class="viewer-result-location viewer-result-detail-only" role="cell" data-label="보관 위치">' + escapeHtmlClient(itemLocation) + '</span>' +
-            '<span class="viewer-result-detail-only" role="cell" data-label="상태"><span class="status ' + (disposed ? 'document-disposed' : 'document-active') + '">' + (disposed ? '폐기' : '보관중') + '</span></span>' +
-            '<span class="optional-column viewer-result-detail-only" data-column="revision-date" role="cell" data-label="제·개정일" hidden>' + escapeHtmlClient(item.revisionDate || '-') + '</span>' +
-            '</article>';
+          return window.HanlimResults.resultRow(item, { selectable: workspaceSelectable, query: query, returnTo: '/app' + (canonicalParams().size ? '?' + canonicalParams().toString() : '') }, escapeHtmlClient, window.SearchCore.highlightHtml);
         };
 
         var renderPayload = function (payload, append) {
@@ -250,11 +240,9 @@ export function instantSearchScript() {
           currentItems = append ? currentItems.concat(incomingItems) : incomingItems;
           currentCursor = payload.nextCursor || '';
           var listHtml = incomingItems.map(function (item) { return resultRow(item, query); }).join('');
-          var html = '<div class="viewer-result-table' + (workspaceSelectable ? ' is-selectable' : '') + '" role="grid" aria-label="문서 검색 결과">' +
-            '<div class="viewer-result-header" role="row">' + (workspaceSelectable ? '<span class="check-col" role="columnheader"><span class="sr-only">선택</span></span>' : '') + '<span role="columnheader">문서명</span><span role="columnheader">문서번호 · 개정</span><span role="columnheader">대분류</span><span role="columnheader">보관 위치</span><span role="columnheader">상태</span><span class="optional-column" data-column="revision-date" role="columnheader" hidden>제·개정일</span></div>' +
-            '<div class="viewer-result-list" role="rowgroup">' + listHtml + '</div></div>';
+          var html = window.HanlimResults.resultTable(listHtml, workspaceSelectable);
           if (!currentItems.length) {
-            html = '<div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>조건에 맞는 문서가 없습니다.</p><div class="empty-actions"><a class="button secondary sm" href="/app" data-viewer-search-reset>검색 초기화</a></div></div>';
+            html = '<div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>조건에 맞는 문서가 없습니다.</p><div class="empty-actions"><a class="button secondary sm" href="/app" data-viewer-search-reset>검색 초기화</a>' + (viewerApp.dataset.canSearchDisposed === 'true' ? '<a class="button secondary sm" href="/documents/disposal?tab=documents">폐기 문서에서 확인</a>' : '') + '</div></div>';
           }
           // fallback 경로는 최근 수정순 후보 창 안에서만 점수를 매기므로 결과 수와 무관하게
           // 오래된 문서가 빠질 수 있다. 누락 가능성은 항상 알리고 문구만 상태에 맞게 나눈다.
@@ -279,10 +267,10 @@ export function instantSearchScript() {
           if (currentItems.length && payload.hasMore && currentCursor && resultsBody) {
             resultsBody.insertAdjacentHTML('beforeend', '<nav class="pagination"><button type="button" class="button secondary sm" data-search-more>더보기</button></nav>');
           }
-          if (resultsTitle) resultsTitle.textContent = query ? '"' + query + '" 검색 결과' : (hasActiveSearchCriteria() ? '필터 검색 결과' : '최근 등록·수정 문서');
+          if (resultsTitle) resultsTitle.textContent = '보관중 문서';
           var hasKnownTotal = payload.candidateCount !== null && payload.candidateCount !== undefined;
           var totalFound = hasKnownTotal ? Number(payload.candidateCount) : currentItems.length;
-          if (resultsCount) resultsCount.textContent = totalFound.toLocaleString('ko-KR') + (hasKnownTotal || !payload.hasMore ? '건' : '+건');
+          if (resultsCount) resultsCount.textContent = currentItems.length.toLocaleString('ko-KR') + '건 표시' + (payload.hasMore ? ' · 더 있음' : '');
           if (searchLive) {
             searchLive.textContent = !currentItems.length
               ? '검색 결과가 없습니다.'
@@ -292,7 +280,6 @@ export function instantSearchScript() {
                 ? totalFound.toLocaleString('ko-KR') + '건 중 ' + currentItems.length.toLocaleString('ko-KR') + '건을 표시했습니다. 더보기로 이어서 확인하세요.'
                 : totalFound.toLocaleString('ko-KR') + '건을 모두 표시했습니다.';
           }
-          if (homeExtras) homeExtras.hidden = true;
           viewerApp.hidden = false;
           var revisionToggle = document.querySelector('[data-column-toggle="revision-date"]');
           document.querySelectorAll('[data-column="revision-date"]').forEach(function (cell) {
@@ -313,10 +300,15 @@ export function instantSearchScript() {
           viewerApp.hidden = false;
         };
 
-        var requestSearch = async function (cursor, append) {
-          if (!hasActiveSearchCriteria() && isHomeMode) { restoreInitial(); return; }
+        var requestSearch = async function (cursor, append, staleRetry) {
+          clearTimeout(renderTimer);
+          if (composing) return;
           if (activeRequest) activeRequest.abort();
+          var sequence = ++searchSequence;
+          if (!append) resetSearchSelection();
           activeRequest = typeof AbortController === 'function' ? new AbortController() : null;
+          retryCursor = append ? cursor : '';
+          viewerApp.setAttribute('aria-busy', 'true');
           if (searchLive) searchLive.textContent = append ? '다음 결과를 불러오는 중…' : '검색 중…';
           try {
             var response = await fetch('/api/viewer/search?' + searchRequestParams(cursor).toString(), {
@@ -324,37 +316,59 @@ export function instantSearchScript() {
               ...(activeRequest ? { signal: activeRequest.signal } : {})
             });
             var payload = await response.json().catch(function () { return {}; });
-            if (response.status === 409 && payload.code === 'SEARCH_CURSOR_STALE') {
-              return requestSearch('', false);
-            }
-            if (!response.ok || payload.ok === false || !Array.isArray(payload.items)) {
-              throw new Error(payload.message || '검색 요청에 실패했습니다.');
-            }
+            if (sequence !== searchSequence) return;
+            if (response.status === 409 && payload.code === 'SEARCH_CURSOR_STALE' && !staleRetry) return requestSearch('', false, true);
+            if (!response.ok || payload.ok === false || !Array.isArray(payload.items)) throw new Error(payload.message || '검색 요청에 실패했습니다.');
             window.__hanlimSearchIndexReady = true;
             var datalist = viewerInput.parentElement?.querySelector?.('[data-suggest-list]');
-            if (datalist && Array.isArray(payload.suggestions)) {
-              datalist.innerHTML = payload.suggestions.map(function (item) {
-                return '<option value="' + escapeHtmlClient(item.value) + '">' + escapeHtmlClient(item.label || item.value) + '</option>';
-              }).join('');
-            }
+            if (datalist && Array.isArray(payload.suggestions)) datalist.innerHTML = payload.suggestions.map(function (item) {
+              return '<option value="' + escapeHtmlClient(item.value) + '">' + escapeHtmlClient(item.label || item.value) + '</option>';
+            }).join('');
             renderPayload(payload, append);
+            if (restoreState) {
+              var anchor = document.querySelector('[data-document-id="' + Number(restoreState.id) + '"]');
+              if (payload.hasMore && currentCursor && currentItems.length < restoreState.count && payload.items.length) return requestSearch(currentCursor, true);
+              var previousState = restoreState;
+              restoreState = null;
+              requestAnimationFrame(function () {
+                if (sequence !== searchSequence) return;
+                if (anchor) { anchor.scrollIntoView({ block: 'center' }); anchor.querySelector('a')?.focus({ preventScroll: true }); }
+                else { window.scrollTo(0, Number(previousState.scroll) || 0); if (searchLive) searchLive.textContent += ' 이전 문서는 현재 열람 범위에 없습니다.'; }
+              });
+            }
           } catch (error) {
-            if (error && error.name === 'AbortError') return;
-            renderError(error && error.message);
+            if (sequence !== searchSequence || error?.name === 'AbortError') return;
+            if (append && resultsBody) {
+              resultsBody.querySelector('[data-search-more]')?.closest('nav')?.remove();
+              resultsBody.querySelector('[data-search-retry]')?.closest('nav')?.remove();
+              resultsBody.insertAdjacentHTML('beforeend', '<nav class="pagination"><span role="alert">다음 결과를 불러오지 못했습니다.</span><button type="button" class="button secondary sm" data-search-retry>다시 시도</button></nav>');
+            } else renderError(error?.message);
+          } finally {
+            if (sequence === searchSequence) viewerApp.setAttribute('aria-busy', 'false');
           }
         };
 
-        viewerInput.addEventListener('input', function () {
+        var scheduleSearch = function () {
           clearTimeout(renderTimer);
+          invalidateSearch();
           syncWorkspaceReturnTo();
           syncFilterUi();
-          if (!hasActiveSearchCriteria() && isHomeMode) { syncBrowserUrl(); restoreInitial(); return; }
+          if (composing) return;
           renderTimer = setTimeout(function () { syncBrowserUrl(); requestSearch('', false); }, 180);
+        };
+        viewerInput.addEventListener('compositionstart', function () { composing = true; clearTimeout(renderTimer); invalidateSearch(); });
+        viewerInput.addEventListener('compositionend', function () { composing = false; scheduleSearch(); });
+        viewerInput.addEventListener('input', function (event) { if (!event.isComposing) scheduleSearch(); });
+        viewerForm.addEventListener('submit', function (event) {
+          event.preventDefault();
+          if (composing || event.isComposing) return;
+          invalidateSearch(); syncBrowserUrl(); requestSearch('', false);
         });
         document.addEventListener('change', function (event) {
           var control = event.target instanceof Element ? event.target : null;
           if (!control || control.form !== viewerForm || control === viewerInput) return;
           clearTimeout(renderTimer);
+          invalidateSearch();
           syncWorkspaceReturnTo();
           syncFilterUi();
           syncBrowserUrl();
@@ -367,6 +381,7 @@ export function instantSearchScript() {
           syncWorkspaceReturnTo();
           syncFilterUi();
           mobileFilterDialog?.close();
+          restoreState = null;
           syncBrowserUrl();
           requestSearch('', false);
         });
@@ -384,6 +399,7 @@ export function instantSearchScript() {
             syncWorkspaceReturnTo();
             syncFilterUi();
             syncBrowserUrl();
+            restoreState = null;
             requestSearch('', false);
             return;
           }
@@ -396,6 +412,7 @@ export function instantSearchScript() {
             syncWorkspaceReturnTo();
             syncFilterUi();
             syncBrowserUrl();
+            restoreState = null;
             requestSearch('', false);
             return;
           }
@@ -406,6 +423,7 @@ export function instantSearchScript() {
             syncWorkspaceReturnTo();
             syncFilterUi();
             syncBrowserUrl();
+            restoreState = null;
             requestSearch('', false);
             return;
           }
@@ -421,16 +439,21 @@ export function instantSearchScript() {
           syncWorkspaceReturnTo();
           syncFilterUi();
           mobileFilterDialog?.close();
+          restoreState = null;
           syncBrowserUrl();
           requestSearch('', false);
         });
         resultsBody?.addEventListener?.('click', function (event) {
           var target = event.target instanceof Element ? event.target : null;
-          if (target?.closest('[data-search-retry]')) { requestSearch('', false); return; }
+          if (target?.closest('[data-search-retry]')) { requestSearch(retryCursor, Boolean(retryCursor)); return; }
           if (target?.closest('[data-search-more]') && currentCursor) requestSearch(currentCursor, true);
         });
         syncFilterUi();
-        if (viewerInput.value.trim()) requestSearch('', false);
+        // 첫 화면은 서버 조회를 재사용한다. 상세 복귀만 최신 데이터로 다시 조회한다.
+        if (viewerContext.initialResults && !restoreState) {
+          renderPayload(viewerContext.initialResults, false);
+          viewerApp.setAttribute('aria-busy', 'false');
+        } else requestSearch('', false);
       }
 `;
 }

@@ -1,6 +1,7 @@
 // 정적 app.js 생성 시 클라이언트 조각의 실행 순서를 고정하는 조립 모듈.
 
 import { escapeHtml } from "../ui/html/escape.js";
+import { formFeedbackScript } from "./clientScript/formFeedback.js";
 import { bootstrapScript } from "./clientScript/bootstrap.js";
 import { bulkCommandScript } from "./clientScript/bulkCommands.js";
 import { documentDetailScript } from "./clientScript/documentDetail.js";
@@ -28,6 +29,7 @@ export function clientScript() {
     masterManagementScript(),
     instantSearchScript(),
     workspaceInteractionScript(),
+    formFeedbackScript(),
     "    });",
     "  "
   ].join("\n");
