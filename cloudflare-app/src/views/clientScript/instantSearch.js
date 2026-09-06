@@ -6,6 +6,7 @@ export function instantSearchScript() {
         var params = new URLSearchParams();
         ['q','category','tag','zone','rack','face','column','shelf','sort'].forEach(function (key) {
           var value = url.searchParams.get(key);
+          if (key === 'sort' && !value) value = viewerForm?.elements?.namedItem('sort')?.value || '';
           if (value && !(key === 'sort' && value === 'relevance')) params.set(key, value);
         });
         return '/app' + (params.size ? '?' + params.toString() : '');

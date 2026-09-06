@@ -13,7 +13,7 @@ function resultRow(item, { selectable = false, selected = false, query = "", ret
   const disposed = item.status === "disposed";
   return `<tr class="viewer-result-row${disposed ? " is-disposed" : ""}" data-document-row data-document-id="${id}" data-document-url="${escape(url)}" data-document-name="${escape(name)}" data-document-number="${escape(number)}" data-document-revision="${escape(revision)}" data-document-category="${escape(item.categoryName || "-")}" data-document-location="${escape(label)}" data-document-status="${disposed ? "폐기" : "보관중"}" data-document-column="${Number(location.columnNumber) || 0}" data-document-shelf="${Number(location.shelfNumber) || 0}">
     ${selectable ? `<td class="check-col" data-label="선택"><label class="bulk-check-target"><input type="checkbox" value="${id}" data-bulk-item aria-label="${escape(name)} 선택"${selected ? " checked" : ""}></label></td>` : ""}
-    <td class="viewer-result-name"><a href="${escape(url)}" data-doc-click="${id}">${highlight(name, query, escape)}</a><span class="viewer-result-identity mono">${highlight(number, query, escape)} <small>${escape(revision)}</small></span>${disposed ? '<span class="status document-disposed">폐기</span>' : ""}</td>
+    <td class="viewer-result-name"><a href="${escape(url)}" data-doc-click="${id}">${highlight(name, query, escape)}</a><span class="viewer-result-identity mono"><span class="viewer-result-number">${highlight(number, query, escape)}</span><small>${escape(revision)}</small></span>${disposed ? '<span class="status document-disposed">폐기</span>' : ""}</td>
     <td class="viewer-result-location" data-label="보관 위치">${escape(label)}</td>
     <td class="viewer-result-category" data-label="대분류">${escape(item.categoryName || "-")}</td>
     <td class="optional-column" data-column="revision-date" data-label="제·개정일" hidden>${escape(item.revisionDate || "-")}</td>
@@ -592,6 +592,7 @@ window.HanlimResults = { resultRow, resultTable };
         var params = new URLSearchParams();
         ['q','category','tag','zone','rack','face','column','shelf','sort'].forEach(function (key) {
           var value = url.searchParams.get(key);
+          if (key === 'sort' && !value) value = viewerForm?.elements?.namedItem('sort')?.value || '';
           if (value && !(key === 'sort' && value === 'relevance')) params.set(key, value);
         });
         return '/app' + (params.size ? '?' + params.toString() : '');
