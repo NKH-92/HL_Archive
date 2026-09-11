@@ -14,6 +14,8 @@ function resultRow(item, { selectable = false, selected = false, query = "", ret
   return `<tr class="viewer-result-row${disposed ? " is-disposed" : ""}" data-document-row data-document-id="${id}" data-document-url="${escape(url)}" data-document-name="${escape(name)}" data-document-number="${escape(number)}" data-document-revision="${escape(revision)}" data-document-category="${escape(item.categoryName || "-")}" data-document-location="${escape(label)}" data-document-status="${disposed ? "폐기" : "보관중"}" data-document-column="${Number(location.columnNumber) || 0}" data-document-shelf="${Number(location.shelfNumber) || 0}">
     ${selectable ? `<td class="check-col" data-label="선택"><label class="bulk-check-target"><input type="checkbox" value="${id}" data-bulk-item aria-label="${escape(name)} 선택"${selected ? " checked" : ""}></label></td>` : ""}
     <td class="viewer-result-name"><a href="${escape(url)}" data-doc-click="${id}">${highlight(name, query, escape)}</a><span class="viewer-result-identity mono"><span class="viewer-result-number">${highlight(number, query, escape)}</span><small>${escape(revision)}</small></span>${disposed ? '<span class="status document-disposed">폐기</span>' : ""}</td>
+    <td class="comparison-column result-number-column mono" data-label="문서번호">${highlight(number, query, escape)}</td>
+    <td class="comparison-column result-revision-column mono" data-label="개정">${escape(revision)}</td>
     <td class="viewer-result-location" data-label="보관 위치">${escape(label)}</td>
     <td class="viewer-result-category" data-label="대분류">${escape(item.categoryName || "-")}</td>
     <td class="optional-column" data-column="revision-date" data-label="제·개정일" hidden>${escape(item.revisionDate || "-")}</td>
@@ -22,7 +24,7 @@ function resultRow(item, { selectable = false, selected = false, query = "", ret
 }
 
 function resultTable(rows, selectable = false) {
-  return `<div class="viewer-result-table${selectable ? " is-selectable" : ""}"><table aria-label="문서 검색 결과"><thead><tr class="viewer-result-header">${selectable ? '<th scope="col" class="check-col"><span class="sr-only">선택</span></th>' : ""}<th scope="col">문서명 · 문서번호 · 개정</th><th scope="col">보관 위치</th><th scope="col">대분류</th><th scope="col" data-column="revision-date" hidden>제·개정일</th><th scope="col"><span class="sr-only">빠른 보기</span></th></tr></thead><tbody class="viewer-result-list">${rows}</tbody></table></div>`;
+  return `<div class="viewer-result-table${selectable ? " is-selectable" : ""}"><table aria-label="문서 검색 결과"><thead><tr class="viewer-result-header">${selectable ? '<th scope="col" class="check-col"><span class="sr-only">선택</span></th>' : ""}<th scope="col" class="result-name-heading"><span class="combined-heading">문서명 · 문서번호 · 개정</span><span class="comparison-heading">문서명</span></th><th scope="col" class="comparison-column result-number-column">문서번호</th><th scope="col" class="comparison-column result-revision-column">개정</th><th scope="col" class="result-location-heading">보관 위치</th><th scope="col" class="result-category-heading">대분류</th><th scope="col" data-column="revision-date" hidden>제·개정일</th><th scope="col"><span class="sr-only">빠른 보기</span></th></tr></thead><tbody class="viewer-result-list">${rows}</tbody></table></div>`;
 }
 
 window.HanlimResults = { resultRow, resultTable };
@@ -484,6 +486,9 @@ window.HanlimResults = { resultRow, resultTable };
 
       var currentPath = location.pathname;
       var currentUrl = new URL(location.href);
+      var parentNavigation = /^\/documents\/\d+(?:\/|$)/.test(currentPath) ? '/app'
+        : currentPath.startsWith('/document-snapshots/') ? '/documents/import'
+        : currentPath.startsWith('/disposal-batches') ? '/documents/disposal' : '';
       var activeNavItems = Array.from(document.querySelectorAll('.archive-nav-item, .nav-sub-link, [data-command-item]')).filter(function (item) {
         var href = item.getAttribute('href') || '';
         if (!href) return false;
@@ -492,7 +497,7 @@ window.HanlimResults = { resultRow, resultTable };
         var queryMatches = Array.from(itemUrl.searchParams.entries()).every(function (entry) {
           return currentUrl.searchParams.getAll(entry[0]).includes(entry[1]);
         });
-        return pathMatches && queryMatches;
+        return (pathMatches && queryMatches) || Boolean(parentNavigation && href === parentNavigation);
       }).sort(function (left, right) {
         return (right.getAttribute('href') || '').length - (left.getAttribute('href') || '').length;
       });
@@ -1047,6 +1052,16 @@ window.HanlimResults = { resultRow, resultTable };
       var workspace = document.querySelector('[data-viewer-app]');
       var previewTrigger = null;
       var previewInline = false;
+      var previewInlineMinimum = Number.parseFloat(window.getComputedStyle?.(document.documentElement).getPropertyValue('--preview-inline-min')) || 1040;
+      var comparisonToggle = document.querySelector('[data-comparison-toggle]');
+      if (comparisonToggle && workspace) {
+        try { comparisonToggle.checked = localStorage.getItem('hanlimComparisonView') === 'true'; } catch {}
+        workspace.classList.toggle('is-comparison', comparisonToggle.checked);
+        comparisonToggle.addEventListener('change', function () {
+          workspace.classList.toggle('is-comparison', comparisonToggle.checked);
+          try { localStorage.setItem('hanlimComparisonView', String(comparisonToggle.checked)); } catch {}
+        });
+      }
       var columnToggle = document.querySelector('[data-column-toggle="revision-date"]');
       var applyRevisionColumn = function (visible) {
         document.querySelectorAll('[data-column="revision-date"]').forEach(function (cell) { cell.hidden = !visible; });
@@ -1064,12 +1079,13 @@ window.HanlimResults = { resultRow, resultTable };
         if (!workspacePreview) return;
         if (workspacePreview.open) workspacePreview.close();
         workspace?.classList.remove('has-preview');
+        document.querySelectorAll('.is-previewed').forEach(function (row) { row.classList.remove('is-previewed'); });
         document.querySelectorAll('[data-preview-open]').forEach(function (button) { button.setAttribute('aria-expanded', 'false'); });
         if (restoreFocus && previewTrigger?.isConnected) previewTrigger.focus();
       };
       var sizePreview = function () {
         if (!workspace || !workspacePreview?.open) return;
-        var inline = workspace.getBoundingClientRect().width >= 1200;
+        var inline = workspace.getBoundingClientRect().width >= previewInlineMinimum;
         if (inline === previewInline) return;
         workspacePreview.close();
         previewInline = inline;
@@ -1098,20 +1114,27 @@ window.HanlimResults = { resultRow, resultTable };
           workspacePreview.querySelector('[data-preview-link]').href = row.dataset.documentUrl;
           var rack = workspacePreview.querySelector('[data-preview-rack]');
           rack.replaceChildren();
+          var corner = document.createElement('span'); rack.appendChild(corner);
+          for (var rackColumn = 1; rackColumn <= 7; rackColumn += 1) {
+            var axis = document.createElement('span'); axis.className = 'preview-rack-axis'; axis.textContent = rackColumn + '열'; rack.appendChild(axis);
+          }
           for (var shelf = 6; shelf >= 1; shelf -= 1) {
+            var shelfAxis = document.createElement('span'); shelfAxis.className = 'preview-rack-axis'; shelfAxis.textContent = shelf; shelfAxis.setAttribute('aria-label', shelf + '선반'); rack.appendChild(shelfAxis);
             for (var column = 1; column <= 7; column += 1) {
               var slot = document.createElement('span');
               var active = column === Number(row.dataset.documentColumn) && shelf === Number(row.dataset.documentShelf);
               slot.className = 'preview-slot' + (active ? ' is-active' : '');
-              slot.textContent = column + '·' + shelf;
+              slot.textContent = active ? '●' : '';
+              slot.title = column + '열 ' + shelf + '선반';
               slot.setAttribute('aria-label', column + '열 ' + shelf + '선반' + (active ? ' 선택 위치' : ''));
               rack.appendChild(slot);
             }
           }
-          previewInline = workspace.getBoundingClientRect().width >= 1200;
+          previewInline = workspace.getBoundingClientRect().width >= previewInlineMinimum;
           workspacePreview.classList.toggle('is-inline', previewInline);
           workspace.classList.toggle('has-preview', previewInline);
           if (previewInline) workspacePreview.show(); else workspacePreview.showModal();
+          row.classList.add('is-previewed');
           button.setAttribute('aria-expanded', 'true');
         }
         var detailLink = target?.closest('[data-doc-click], [data-preview-link]');
@@ -1192,16 +1215,28 @@ window.HanlimResults = { resultRow, resultTable };
             var summary = parsed.querySelector('[data-error-summary], .form-error-summary, .alert.danger');
             if (!summary || response.status >= 500 || response.redirected) throw new Error('save-unknown');
             restoreControls();
-            form.querySelectorAll('[aria-invalid="true"]').forEach(function (field) { field.removeAttribute('aria-invalid'); });
+            var previousErrorIds = new Set();
+            form.querySelectorAll('.field-error').forEach(function (error) { previousErrorIds.add(error.id); error.remove(); });
+            form.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
+              field.removeAttribute('aria-invalid');
+              var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').filter(function (id) { return id && !previousErrorIds.has(id); });
+              if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' ')); else field.removeAttribute('aria-describedby');
+            });
             feedback.className = 'form-error-summary'; feedback.setAttribute('role', 'alert'); feedback.replaceChildren();
             var message = document.createElement('p'); message.textContent = summary.textContent.trim(); feedback.appendChild(message);
             parsed.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
               var current = document.getElementById(field.id);
               if (!current || !form.contains(current)) return;
+              if (current.closest('.enhanced-control-hidden')) current = form.querySelector(field.id === 'field-rackFace' ? '#field-locationFace' : '#field-locationZone') || current;
               current.setAttribute('aria-invalid', 'true');
-              var link = document.createElement('a'); link.href = '#' + field.id;
+              var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').map(function (id) { return parsed.getElementById(id); }).filter(function (element) { return element?.classList.contains('field-error'); });
+              var errorText = descriptions.map(function (element) { return element.textContent.trim(); }).join(' ') || '입력값을 확인하세요.';
+              var inlineError = document.createElement('p'); inlineError.className = 'field-error'; inlineError.id = 'response-error-' + current.id; inlineError.textContent = errorText;
+              (current.closest('label') || current).insertAdjacentElement('afterend', inlineError);
+              current.setAttribute('aria-describedby', ((current.getAttribute('aria-describedby') || '') + ' ' + inlineError.id).trim());
+              var link = document.createElement('a'); link.href = '#' + current.id;
               var label = parsed.querySelector('label[for="' + field.id + '"]');
-              link.textContent = (label?.textContent || field.name) + ' 확인'; feedback.appendChild(link);
+              link.textContent = (label?.textContent || field.name) + ': ' + errorText; feedback.appendChild(link);
             });
             var latest = document.createElement('a');
             latest.href = form.action.replace(/\/(edit|revise|move)$/, ''); latest.target = '_blank'; latest.rel = 'noopener'; latest.textContent = '최신 내용 별도 확인'; feedback.appendChild(latest);

@@ -40,16 +40,28 @@ export function formFeedbackScript() {
             var summary = parsed.querySelector('[data-error-summary], .form-error-summary, .alert.danger');
             if (!summary || response.status >= 500 || response.redirected) throw new Error('save-unknown');
             restoreControls();
-            form.querySelectorAll('[aria-invalid="true"]').forEach(function (field) { field.removeAttribute('aria-invalid'); });
+            var previousErrorIds = new Set();
+            form.querySelectorAll('.field-error').forEach(function (error) { previousErrorIds.add(error.id); error.remove(); });
+            form.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
+              field.removeAttribute('aria-invalid');
+              var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').filter(function (id) { return id && !previousErrorIds.has(id); });
+              if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' ')); else field.removeAttribute('aria-describedby');
+            });
             feedback.className = 'form-error-summary'; feedback.setAttribute('role', 'alert'); feedback.replaceChildren();
             var message = document.createElement('p'); message.textContent = summary.textContent.trim(); feedback.appendChild(message);
             parsed.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
               var current = document.getElementById(field.id);
               if (!current || !form.contains(current)) return;
+              if (current.closest('.enhanced-control-hidden')) current = form.querySelector(field.id === 'field-rackFace' ? '#field-locationFace' : '#field-locationZone') || current;
               current.setAttribute('aria-invalid', 'true');
-              var link = document.createElement('a'); link.href = '#' + field.id;
+              var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').map(function (id) { return parsed.getElementById(id); }).filter(function (element) { return element?.classList.contains('field-error'); });
+              var errorText = descriptions.map(function (element) { return element.textContent.trim(); }).join(' ') || '입력값을 확인하세요.';
+              var inlineError = document.createElement('p'); inlineError.className = 'field-error'; inlineError.id = 'response-error-' + current.id; inlineError.textContent = errorText;
+              (current.closest('label') || current).insertAdjacentElement('afterend', inlineError);
+              current.setAttribute('aria-describedby', ((current.getAttribute('aria-describedby') || '') + ' ' + inlineError.id).trim());
+              var link = document.createElement('a'); link.href = '#' + current.id;
               var label = parsed.querySelector('label[for="' + field.id + '"]');
-              link.textContent = (label?.textContent || field.name) + ' 확인'; feedback.appendChild(link);
+              link.textContent = (label?.textContent || field.name) + ': ' + errorText; feedback.appendChild(link);
             });
             var latest = document.createElement('a');
             latest.href = form.action.replace(/\\/(edit|revise|move)$/, ''); latest.target = '_blank'; latest.rel = 'noopener'; latest.textContent = '최신 내용 별도 확인'; feedback.appendChild(latest);

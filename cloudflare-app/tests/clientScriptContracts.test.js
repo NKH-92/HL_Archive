@@ -169,7 +169,7 @@ test("문서 작업 공간은 검색 단축키·행 탐색·열 설정·선택 �
   assert.match(script, /event\.key === 'ArrowDown'/);
   assert.match(script, /event\.key === 'ArrowUp'/);
   assert.match(script, /data-document-preview/);
-  assert.match(script, /getBoundingClientRect\(\)\.width >= 1200/);
+  assert.match(script, /getBoundingClientRect\(\)\.width >= previewInlineMinimum/);
   assert.doesNotMatch(script, /\(min-width: 1181px\)/);
   assert.match(script, /hanlimDocumentColumns/);
   assert.match(script, /data-set-selection-form/);
