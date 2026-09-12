@@ -1055,11 +1055,10 @@ window.HanlimResults = { resultRow, resultTable };
       var previewInlineMinimum = Number.parseFloat(window.getComputedStyle?.(document.documentElement).getPropertyValue('--preview-inline-min')) || 1040;
       var comparisonToggle = document.querySelector('[data-comparison-toggle]');
       if (comparisonToggle && workspace) {
-        try { comparisonToggle.checked = localStorage.getItem('hanlimComparisonView') === 'true'; } catch {}
+        comparisonToggle.checked = false;
         workspace.classList.toggle('is-comparison', comparisonToggle.checked);
         comparisonToggle.addEventListener('change', function () {
           workspace.classList.toggle('is-comparison', comparisonToggle.checked);
-          try { localStorage.setItem('hanlimComparisonView', String(comparisonToggle.checked)); } catch {}
         });
       }
       var columnToggle = document.querySelector('[data-column-toggle="revision-date"]');
