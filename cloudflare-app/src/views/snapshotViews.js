@@ -240,7 +240,7 @@ export function documentSnapshotDetailPage({
           <p class="muted">필요 권한: ${escapeHtml(permissionText || "문서 관리 + 엑셀 반영")}</p>
           ${missingText ? `<p class="muted">부족 권한: ${escapeHtml(missingText)}</p>` : ""}
           <p><strong>동기화 사유:</strong> ${escapeHtml(snapshot.apply_reason || "미입력(기존 작업)")}</p>
-          <p class="muted">client source hash(브라우저 보고값): <span class="mono">${escapeHtml(snapshot.source_hash || "-")}</span></p>
+          <details class="snapshot-help"><summary>검증 상세·증적</summary><p class="muted">원본 파일 확인값(브라우저 보고값): <span class="mono">${escapeHtml(snapshot.source_hash || "-")}</span></p></details>
         </div>
       </div>
       ${["staging", "ready"].includes(snapshot.status) ? `
@@ -342,7 +342,8 @@ function applyForm(snapshot, excludeCount, reviewCount) {
         </label>
         <label class="checkbox"><input type="checkbox" name="confirmExclude" value="1" required> 제외 ${number(excludeCount)}건을 검토했고 반영에 동의합니다.</label>
       ` : `<input type="hidden" name="confirmedExcludeCount" value="0">`}
-      <button type="submit" class="action-button">현재 대장으로 반영</button>
+      <p class="snapshot-apply-impact" role="note">변경 영향 ${number(reviewCount)}건 · 대장 제외 ${number(excludeCount)}건을 반영합니다. 대장 제외는 문서 폐기와 다릅니다.</p>
+      <button type="submit" class="button">현재 대장으로 반영</button>
     </form>
   `;
 }

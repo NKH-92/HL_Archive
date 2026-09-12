@@ -5,6 +5,15 @@ export function workspaceInteractionScript() {
       var workspace = document.querySelector('[data-viewer-app]');
       var previewTrigger = null;
       var previewInline = false;
+      var previewInlineMinimum = Number.parseFloat(window.getComputedStyle?.(document.documentElement).getPropertyValue('--preview-inline-min')) || 1040;
+      var comparisonToggle = document.querySelector('[data-comparison-toggle]');
+      if (comparisonToggle && workspace) {
+        comparisonToggle.checked = false;
+        workspace.classList.toggle('is-comparison', comparisonToggle.checked);
+        comparisonToggle.addEventListener('change', function () {
+          workspace.classList.toggle('is-comparison', comparisonToggle.checked);
+        });
+      }
       var columnToggle = document.querySelector('[data-column-toggle="revision-date"]');
       var applyRevisionColumn = function (visible) {
         document.querySelectorAll('[data-column="revision-date"]').forEach(function (cell) { cell.hidden = !visible; });
@@ -22,12 +31,13 @@ export function workspaceInteractionScript() {
         if (!workspacePreview) return;
         if (workspacePreview.open) workspacePreview.close();
         workspace?.classList.remove('has-preview');
+        document.querySelectorAll('.is-previewed').forEach(function (row) { row.classList.remove('is-previewed'); });
         document.querySelectorAll('[data-preview-open]').forEach(function (button) { button.setAttribute('aria-expanded', 'false'); });
         if (restoreFocus && previewTrigger?.isConnected) previewTrigger.focus();
       };
       var sizePreview = function () {
         if (!workspace || !workspacePreview?.open) return;
-        var inline = workspace.getBoundingClientRect().width >= 1200;
+        var inline = workspace.getBoundingClientRect().width >= previewInlineMinimum;
         if (inline === previewInline) return;
         workspacePreview.close();
         previewInline = inline;
@@ -56,20 +66,27 @@ export function workspaceInteractionScript() {
           workspacePreview.querySelector('[data-preview-link]').href = row.dataset.documentUrl;
           var rack = workspacePreview.querySelector('[data-preview-rack]');
           rack.replaceChildren();
+          var corner = document.createElement('span'); rack.appendChild(corner);
+          for (var rackColumn = 1; rackColumn <= 7; rackColumn += 1) {
+            var axis = document.createElement('span'); axis.className = 'preview-rack-axis'; axis.textContent = rackColumn + '열'; rack.appendChild(axis);
+          }
           for (var shelf = 6; shelf >= 1; shelf -= 1) {
+            var shelfAxis = document.createElement('span'); shelfAxis.className = 'preview-rack-axis'; shelfAxis.textContent = shelf; shelfAxis.setAttribute('aria-label', shelf + '선반'); rack.appendChild(shelfAxis);
             for (var column = 1; column <= 7; column += 1) {
               var slot = document.createElement('span');
               var active = column === Number(row.dataset.documentColumn) && shelf === Number(row.dataset.documentShelf);
               slot.className = 'preview-slot' + (active ? ' is-active' : '');
-              slot.textContent = column + '·' + shelf;
+              slot.textContent = active ? '●' : '';
+              slot.title = column + '열 ' + shelf + '선반';
               slot.setAttribute('aria-label', column + '열 ' + shelf + '선반' + (active ? ' 선택 위치' : ''));
               rack.appendChild(slot);
             }
           }
-          previewInline = workspace.getBoundingClientRect().width >= 1200;
+          previewInline = workspace.getBoundingClientRect().width >= previewInlineMinimum;
           workspacePreview.classList.toggle('is-inline', previewInline);
           workspace.classList.toggle('has-preview', previewInline);
           if (previewInline) workspacePreview.show(); else workspacePreview.showModal();
+          row.classList.add('is-previewed');
           button.setAttribute('aria-expanded', 'true');
         }
         var detailLink = target?.closest('[data-doc-click], [data-preview-link]');

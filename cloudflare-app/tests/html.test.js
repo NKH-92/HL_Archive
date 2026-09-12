@@ -375,11 +375,11 @@ test("dashboard page renders search-first row results without a floor plan", asy
   for (const label of ["문서명 · 문서번호 · 개정", "대분류", "보관 위치", "제·개정일"]) {
     assert.match(html, new RegExp(">" + label + "<"));
   }
-  // 키보드로 행을 이동하고 선택하므로 grid가 열 이름과 선택 상태를 함께 전달해야 한다.
+  // 네이티브 표의 기본 열과 PC 비교용 선택 열을 함께 제공한다.
   const viewerHeader = html.match(/<tr class="viewer-result-header"[\s\S]*?<\/tr>/)?.[0] || "";
   assert.match(html, /<table aria-label="문서 검색 결과"/);
   assert.match(html, /data-document-row data-document-id=/);
-  assert.equal((viewerHeader.match(/scope="col"/g) || []).length, 5);
+  assert.equal((viewerHeader.match(/scope="col"/g) || []).length, 7);
   assert.doesNotMatch(html, /viewer-result-detail-only/);
   assert.match(html, /class="optional-column"[^>]*data-label="제·개정일"/);
   assert.match(html, /<mark>PV<\/mark>/, "검색어 일치 부분이 하이라이트된다");
@@ -460,7 +460,7 @@ test("dashboard home mode uses a search-first operational hero without a floor p
   assert.doesNotMatch(mainNav, /href="\/(documents|racks|categories|tags|disposal-batches)"/);
 });
 
-test("document workspace exposes permission-scoped selection actions and five default columns", async () => {
+test("document workspace exposes permission-scoped selection actions and optional comparison columns", async () => {
   const response = dashboardPage({
     session: {
       username: "manager",
@@ -501,7 +501,7 @@ test("document workspace exposes permission-scoped selection actions and five de
   assert.match(html, /action="\/documents\/disposal\/process"/);
   assert.match(html, /data-document-preview/);
   assert.match(html, /data-column-toggle="revision-date"/);
-  assert.match(html, /<th scope="col">문서명 · 문서번호 · 개정<\/th>/);
+  assert.match(html, /<span class="combined-heading">문서명 · 문서번호 · 개정<\/span>/);
   assert.match(html, /data-column="revision-date" hidden>제·개정일/);
   assert.doesNotMatch(html, /data-bulk-select-all|현재 목록 선택/);
   assert.match(html, /<table aria-label="문서 검색 결과"/);

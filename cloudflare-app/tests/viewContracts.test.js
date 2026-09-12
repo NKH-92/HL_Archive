@@ -363,7 +363,7 @@ test("엑셀 대장 동기화 화면은 단일 엑셀 전체 동기화 흐름만
   assert.match(detail, /변경 문서/);
   assert.match(detail, /제외 예정 문서/);
   assert.match(detail, /대장 제외 예정/);
-  assert.match(detail, /class="action-button">현재 대장으로 반영<\/button>/);
+  assert.match(detail, /class="button">현재 대장으로 반영<\/button>/);
 });
 
 test("폐기 캠페인 목록과 초안 폼은 조건 필드·민감 값 escape 계약을 유지한다", async () => {

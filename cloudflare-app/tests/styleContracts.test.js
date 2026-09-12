@@ -58,6 +58,9 @@ const expectedTokens = {
   "--control-height": "40px",
   "--touch-height": "44px",
   "--preview-width": "320px",
+  "--preview-inline-min": "1040px",
+  "--text-identity": "14px",
+  "--rack-axis-width": "24px",
   "--font-mono": "ui-monospace, \"Cascadia Code\", \"SF Mono\", Consolas, monospace"
 };
 

@@ -87,7 +87,7 @@ export function dashboardPage({
     })}
 
     <section class="viewer-workspace" data-viewer-app data-can-search-disposed="${capabilities.canManageDisposals ? "true" : "false"}">
-      <article class="panel results-panel" aria-labelledby="viewer-results-title" data-viewer-results aria-live="polite">
+      <article class="panel results-panel" aria-labelledby="viewer-results-title" data-viewer-results>
         <div class="section-title viewer-results-heading">
           <h2 id="viewer-results-title" data-results-title>보관중 문서</h2>
           <div class="viewer-result-tools">
@@ -188,13 +188,13 @@ function viewerDocumentResults(documents, query, capabilities = {}, selectedDocu
 }
 
 function columnSettings() {
-  return `<details class="column-settings"><summary><i class="fa-solid fa-table-columns" aria-hidden="true"></i>열 설정</summary><label><input type="checkbox" data-column-toggle="revision-date"> 제·개정일</label></details>`;
+  return `<label class="comparison-setting"><input type="checkbox" data-comparison-toggle> 비교 보기</label><details class="column-settings"><summary><i class="fa-solid fa-table-columns" aria-hidden="true"></i>열 설정</summary><label><input type="checkbox" data-column-toggle="revision-date"> 제·개정일</label></details>`;
 }
 
 function workspacePreview() {
   return `<dialog class="viewer-preview panel" aria-labelledby="preview-title" data-document-preview>
     <div class="section-title"><h2 id="preview-title">빠른 보기</h2><button type="button" class="icon-button" data-preview-close aria-label="미리보기 닫기">×</button></div>
-    <strong data-preview-name></strong><p class="mono" data-preview-number></p>
+    <strong class="preview-document-name" data-preview-name></strong><p class="mono preview-document-number" data-preview-number></p>
     <div class="preview-location"><small>보관 위치</small><strong data-preview-location></strong></div>
     <div class="preview-rack" data-preview-rack aria-label="해당 면의 열과 선반"></div>
     <p class="muted">해당 면을 바라본 기준으로 왼쪽부터 1열 · 아래부터 1선반</p>

@@ -55,7 +55,7 @@ export function documentRevisionPage({ session, document, values = {}, validatio
 
         <div class="form-actions">
           <a class="button secondary" href="${escapeHtml(documentLink(document.id, "", values.returnTo))}">취소</a>
-          <button type="submit" class="action-button">개정본으로 교체</button>
+          <button type="submit" class="danger-button">이전본 폐기 후 개정본으로 교체</button>
         </div>
       </form>
     </section>

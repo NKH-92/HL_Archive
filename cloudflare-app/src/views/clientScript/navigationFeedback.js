@@ -31,6 +31,9 @@ export function navigationFeedbackScript() {
   const toastMessages = JSON.stringify(TOAST_MESSAGES);
   return `      var currentPath = location.pathname;
       var currentUrl = new URL(location.href);
+      var parentNavigation = /^\\/documents\\/\\d+(?:\\/|$)/.test(currentPath) ? '/app'
+        : currentPath.startsWith('/document-snapshots/') ? '/documents/import'
+        : currentPath.startsWith('/disposal-batches') ? '/documents/disposal' : '';
       var activeNavItems = Array.from(document.querySelectorAll('.archive-nav-item, .nav-sub-link, [data-command-item]')).filter(function (item) {
         var href = item.getAttribute('href') || '';
         if (!href) return false;
@@ -39,7 +42,7 @@ export function navigationFeedbackScript() {
         var queryMatches = Array.from(itemUrl.searchParams.entries()).every(function (entry) {
           return currentUrl.searchParams.getAll(entry[0]).includes(entry[1]);
         });
-        return pathMatches && queryMatches;
+        return (pathMatches && queryMatches) || Boolean(parentNavigation && href === parentNavigation);
       }).sort(function (left, right) {
         return (right.getAttribute('href') || '').length - (left.getAttribute('href') || '').length;
       });
